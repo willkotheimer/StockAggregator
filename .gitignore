@@ -4,6 +4,11 @@
 # Azure Functions localsettings file
 local.settings.json
 
+# Local secrets — never commit. .env.example is the safe, committed template.
+.env
+.env.*
+!.env.example
+
 # User-specific files
 *.suo
 *.user

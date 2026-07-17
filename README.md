@@ -42,8 +42,24 @@ sql/001_create_StockQuotes.sql     Database + table DDL (run once)
 | `FmpQuoteBaseUrl`     | Optional. Defaults to `https://financialmodelingprep.com/api/v3/quote` |
 | `WEBSITE_TIME_ZONE`   | Set to `Central Standard Time` so timers run on CT + follow DST |
 
-Locally these live in `local.settings.json` (git-ignored — never committed).
-In Azure/DevOps they are set as pipeline variables / Function App application settings.
+**Locally** these live in `.env` (git-ignored — never committed). Copy the template
+and fill it in:
+
+```
+cp .env.example .env
+```
+
+`Program.cs` loads `.env` into the environment at startup, so `IConfiguration` picks
+the values up like any other setting. The file is absent in Azure, where the loader is
+a no-op and the values come from Function App application settings instead (sourced
+from your DevOps pipeline variables).
+
+`local.settings.json` (also git-ignored) is kept to just the two Functions runtime keys
+— `AzureWebJobsStorage` and `FUNCTIONS_WORKER_RUNTIME` — so that secrets have exactly
+one home locally: `.env`.
+
+When you add a new setting, add it to both `.env` and `.env.example` (real value in the
+former, placeholder in the latter).
 
 ## A note on the API endpoint
 
@@ -58,7 +74,7 @@ needed, as long as the JSON is an array of objects with `symbol`/`price`/
 ## Run locally
 
 1. Create the database: run `sql/001_create_StockQuotes.sql`.
-2. Fill in real values in `local.settings.json`.
+2. `cp .env.example .env` and fill in real values.
 3. Install Azure Functions Core Tools (`func`) if you don't have it:
    `npm i -g azure-functions-core-tools@4 --unsafe-perm true`
 4. `func start`
