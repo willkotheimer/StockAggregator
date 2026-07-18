@@ -62,15 +62,32 @@ public class QuoteFetcher
         var url = $"{baseUrl.TrimEnd('/')}/{Uri.EscapeDataString(cleaned)}?apikey={apiKey}";
 
         var client = _httpClientFactory.CreateClient("fmp");
-        _logger.LogInformation("Requesting quotes for {Count} symbols.", cleaned.Split(',').Length);
+        _logger.LogInformation("Requesting quotes for {Count} symbols from {Url}.", cleaned.Split(',').Length, baseUrl);
 
-        using var response = await client.GetAsync(url, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        try
+        {
+            using var response = await client.GetAsync(url, cancellationToken);
+            var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
 
-        var quotes = await response.Content.ReadFromJsonAsync<List<StockQuote>>(JsonOptions, cancellationToken)
-            ?? new List<StockQuote>();
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError(
+                    "Financial Modeling Prep request failed with status {StatusCode}: {ResponseBody}",
+                    (int)response.StatusCode,
+                    responseText);
+                response.EnsureSuccessStatusCode();
+            }
 
-        _logger.LogInformation("Received {Count} quotes from provider.", quotes.Count);
-        return quotes;
+            var quotes = await response.Content.ReadFromJsonAsync<List<StockQuote>>(JsonOptions, cancellationToken)
+                ?? new List<StockQuote>();
+
+            _logger.LogInformation("Received {Count} quotes from provider.", quotes.Count);
+            return quotes;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch quotes from Financial Modeling Prep for symbols {Symbols}.", cleaned);
+            throw;
+        }
     }
 }

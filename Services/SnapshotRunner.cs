@@ -25,9 +25,17 @@ public class SnapshotRunner
     {
         _logger.LogInformation("Starting snapshot run {RunLabel}.", runLabel);
 
-        var quotes = await _fetcher.FetchAsync(cancellationToken);
-        await _repository.SaveAsync(quotes, DateTime.UtcNow, runLabel, cancellationToken);
+        try
+        {
+            var quotes = await _fetcher.FetchAsync(cancellationToken);
+            await _repository.SaveAsync(quotes, DateTime.UtcNow, runLabel, cancellationToken);
 
-        _logger.LogInformation("Completed snapshot run {RunLabel}.", runLabel);
+            _logger.LogInformation("Completed snapshot run {RunLabel}.", runLabel);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Snapshot run {RunLabel} failed.", runLabel);
+            throw;
+        }
     }
 }

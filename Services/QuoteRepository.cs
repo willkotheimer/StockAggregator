@@ -41,37 +41,48 @@ public class QuoteRepository
 INSERT INTO dbo.StockQuotes (Symbol, Price, ChangesPercentage, Volume, CapturedAtUtc, RunLabel)
 VALUES (@Symbol, @Price, @ChangesPercentage, @Volume, @CapturedAtUtc, @RunLabel);";
 
-        await using var connection = new SqlConnection(connectionString);
-        await connection.OpenAsync(cancellationToken);
-        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(cancellationToken);
+        _logger.LogInformation("Attempting to save {Count} quotes for run {RunLabel}.", quotes.Count, runLabel);
 
         try
         {
-            foreach (var quote in quotes)
+            await using var connection = new SqlConnection(connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(cancellationToken);
+
+            try
             {
-                await using var command = new SqlCommand(sql, connection, transaction);
-                command.Parameters.Add("@Symbol", System.Data.SqlDbType.NVarChar, 20).Value =
-                    quote.Symbol;
-                command.Parameters.Add("@Price", System.Data.SqlDbType.Decimal).Value =
-                    (object?)quote.Price ?? DBNull.Value;
-                command.Parameters.Add("@ChangesPercentage", System.Data.SqlDbType.Decimal).Value =
-                    (object?)quote.ChangesPercentage ?? DBNull.Value;
-                command.Parameters.Add("@Volume", System.Data.SqlDbType.BigInt).Value =
-                    (object?)quote.Volume ?? DBNull.Value;
-                command.Parameters.Add("@CapturedAtUtc", System.Data.SqlDbType.DateTime2).Value =
-                    capturedAtUtc;
-                command.Parameters.Add("@RunLabel", System.Data.SqlDbType.NVarChar, 20).Value =
-                    runLabel;
+                foreach (var quote in quotes)
+                {
+                    await using var command = new SqlCommand(sql, connection, transaction);
+                    command.Parameters.Add("@Symbol", System.Data.SqlDbType.NVarChar, 20).Value =
+                        quote.Symbol;
+                    command.Parameters.Add("@Price", System.Data.SqlDbType.Decimal).Value =
+                        (object?)quote.Price ?? DBNull.Value;
+                    command.Parameters.Add("@ChangesPercentage", System.Data.SqlDbType.Decimal).Value =
+                        (object?)quote.ChangesPercentage ?? DBNull.Value;
+                    command.Parameters.Add("@Volume", System.Data.SqlDbType.BigInt).Value =
+                        (object?)quote.Volume ?? DBNull.Value;
+                    command.Parameters.Add("@CapturedAtUtc", System.Data.SqlDbType.DateTime2).Value =
+                        capturedAtUtc;
+                    command.Parameters.Add("@RunLabel", System.Data.SqlDbType.NVarChar, 20).Value =
+                        runLabel;
 
-                await command.ExecuteNonQueryAsync(cancellationToken);
+                    await command.ExecuteNonQueryAsync(cancellationToken);
+                }
+
+                await transaction.CommitAsync(cancellationToken);
+                _logger.LogInformation("Saved {Count} quotes for run {RunLabel}.", quotes.Count, runLabel);
             }
-
-            await transaction.CommitAsync(cancellationToken);
-            _logger.LogInformation("Saved {Count} quotes for run {RunLabel}.", quotes.Count, runLabel);
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                _logger.LogError(ex, "Failed to save {Count} quotes for run {RunLabel}.", quotes.Count, runLabel);
+                throw;
+            }
         }
-        catch
+        catch (Exception ex)
         {
-            await transaction.RollbackAsync(cancellationToken);
+            _logger.LogError(ex, "Failed to open SQL connection or begin transaction for run {RunLabel}.", runLabel);
             throw;
         }
     }
