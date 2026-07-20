@@ -24,6 +24,7 @@ builder.Services.AddHttpClient("fmp", client =>
 builder.Services.AddSingleton<QuoteFetcher>();
 builder.Services.AddSingleton<QuoteRepository>();
 builder.Services.AddSingleton<SnapshotRunner>();
+builder.Services.AddSingleton<ISnapshotRunner>(sp => sp.GetRequiredService<SnapshotRunner>());
 
 if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APPLICATIONINSIGHTS_CONNECTION_STRING")))
 {

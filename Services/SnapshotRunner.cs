@@ -5,7 +5,7 @@ namespace StockAggregator.Services;
 /// <summary>
 /// Ties the fetch + persist steps together so every timer entry point runs identical logic.
 /// </summary>
-public class SnapshotRunner
+public class SnapshotRunner : ISnapshotRunner
 {
     private readonly QuoteFetcher _fetcher;
     private readonly QuoteRepository _repository;
