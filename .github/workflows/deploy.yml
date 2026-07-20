@@ -19,8 +19,11 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore
+      - name: Restore app
         run: dotnet restore StockAggregator.csproj
+
+      - name: Restore tests
+        run: dotnet restore StockAggregator.Tests/StockAggregator.Tests.csproj
 
       - name: Build
         run: dotnet build StockAggregator.csproj --configuration Release --no-restore
