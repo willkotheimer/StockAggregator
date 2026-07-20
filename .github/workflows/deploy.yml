@@ -46,4 +46,8 @@ jobs:
         env:
           FUNCTION_APP_URL: ${{ secrets.FUNCTION_APP_URL }}
         run: |
+          if [ -z "$FUNCTION_APP_URL" ]; then
+            echo "Missing required secret: FUNCTION_APP_URL"
+            exit 1
+          fi
           dotnet test StockAggregator.Tests/StockAggregator.Tests.csproj --filter FullyQualifiedName~DeploymentSmokeTests
