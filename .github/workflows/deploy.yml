@@ -50,4 +50,5 @@ jobs:
             echo "Missing required secret: FUNCTION_APP_URL"
             exit 1
           fi
+          echo "Testing endpoint: $FUNCTION_APP_URL"
           dotnet test StockAggregator.Tests/StockAggregator.Tests.csproj --filter FullyQualifiedName~DeploymentSmokeTests
