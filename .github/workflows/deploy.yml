@@ -38,3 +38,9 @@ jobs:
         with:
           app-name: ${{ secrets.FUNCTION_APP_NAME }}
           package: ./publish
+
+      - name: Run deployment smoke test
+        env:
+          FUNCTION_APP_URL: ${{ secrets.FUNCTION_APP_URL }}
+        run: |
+          dotnet test StockAggregator.Tests/StockAggregator.Tests.csproj --filter FullyQualifiedName~DeploymentSmokeTests --no-restore
