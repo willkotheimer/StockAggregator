@@ -46,4 +46,4 @@ jobs:
         env:
           FUNCTION_APP_URL: ${{ secrets.FUNCTION_APP_URL }}
         run: |
-          dotnet test StockAggregator.Tests/StockAggregator.Tests.csproj --filter FullyQualifiedName~DeploymentSmokeTests --no-restore
+          dotnet test StockAggregator.Tests/StockAggregator.Tests.csproj --filter FullyQualifiedName~DeploymentSmokeTests
