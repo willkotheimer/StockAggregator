@@ -9,10 +9,7 @@ public class DeploymentSmokeTests
     public async Task ManualSnapshotEndpoint_ReturnsOk_WhenDeployed()
     {
         var baseUrl = Environment.GetEnvironmentVariable("FUNCTION_APP_URL");
-        if (string.IsNullOrWhiteSpace(baseUrl))
-        {
-            return;
-        }
+        Assert.False(string.IsNullOrWhiteSpace(baseUrl), "FUNCTION_APP_URL must be set for the deployment smoke test.");
 
         using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
         var response = await client.GetAsync($"{baseUrl.TrimEnd('/')}/api/manual-snapshot");
