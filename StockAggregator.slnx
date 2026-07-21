@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="StockAggregator.csproj" />
+  <Project Path="StockAggregator.Tests/StockAggregator.Tests.csproj" />
+  <Project Path="StockAggregatorApp/StockAggregatorApp.csproj" />
+</Solution>

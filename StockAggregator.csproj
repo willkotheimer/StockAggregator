@@ -23,8 +23,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Sibling projects live in subfolders under the repo root; keep this
+         root project (the Functions app) from globbing their source. -->
     <Compile Remove="StockAggregator.Tests/**/*.cs" />
     <None Remove="StockAggregator.Tests/**/*.cs" />
+    <Compile Remove="StockAggregatorApp/**/*.cs" />
+    <None Remove="StockAggregatorApp/**/*.cs" />
   </ItemGroup>
 
 </Project>
