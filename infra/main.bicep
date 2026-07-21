@@ -40,12 +40,8 @@ param sqlAadAdminPrincipalType string = 'User'
 @description('Stock symbols to fetch, as a comma-separated list.')
 param stockSymbols string = 'AAPL,MSFT,NVDA'
 
-@secure()
-@description('Financial Modeling Prep API key.')
-param financialDataApiKey string
-
-@description('Financial Modeling Prep quote endpoint.')
-param fmpQuoteBaseUrl string = 'https://financialmodelingprep.com/api/v3/quote'
+@description('Yahoo Finance chart endpoint (single-symbol; the app appends /{symbol}).')
+param yahooChartBaseUrl string = 'https://query1.finance.yahoo.com/v8/finance/chart'
 
 @description('Time zone used for timer triggers.')
 param websiteTimeZone string = 'Central Standard Time'
@@ -116,16 +112,12 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
           value: sqlConnectionString
         }
         {
-          name: 'FinancialDataApiKey'
-          value: financialDataApiKey
-        }
-        {
           name: 'StockSymbols'
           value: stockSymbols
         }
         {
-          name: 'FmpQuoteBaseUrl'
-          value: fmpQuoteBaseUrl
+          name: 'YahooChartBaseUrl'
+          value: yahooChartBaseUrl
         }
         {
           name: 'WEBSITE_TIME_ZONE'

@@ -27,7 +27,7 @@ steps:
         az deployment group create \
           --resource-group $(ResourceGroupName) \
           --template-file infra/main.bicep \
-          --parameters functionAppName=$(FunctionAppName) storageAccountName=$(StorageAccountName) appServicePlanName=$(AppServicePlanName) sqlServerName=$(SqlServerName) sqlAdminLogin=$(SqlAdminLogin) sqlAdminPassword=$(SqlAdminPassword) financialDataApiKey=$(FinancialDataApiKey) stockSymbols=$(StockSymbols) fmpQuoteBaseUrl=$(FmpQuoteBaseUrl) websiteTimeZone=$(WebsiteTimeZone)
+          --parameters functionAppName=$(FunctionAppName) storageAccountName=$(StorageAccountName) appServicePlanName=$(AppServicePlanName) sqlServerName=$(SqlServerName) sqlAdminLogin=$(SqlAdminLogin) sqlAdminPassword=$(SqlAdminPassword) sqlAadAdminLogin=$(SqlAadAdminLogin) sqlAadAdminObjectId=$(SqlAadAdminObjectId) stockSymbols=$(StockSymbols) websiteTimeZone=$(WebsiteTimeZone)
 
   - task: DotNetCoreCLI@2
     displayName: 'Restore NuGet packages'

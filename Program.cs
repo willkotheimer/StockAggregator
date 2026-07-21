@@ -16,10 +16,13 @@ var builder = FunctionsApplication.CreateBuilder(args);
 
 builder.ConfigureFunctionsWebApplication();
 
-// Named HttpClient for Financial Modeling Prep, plus the app's own services.
-builder.Services.AddHttpClient("fmp", client =>
+// Named HttpClient for Yahoo Finance, plus the app's own services. Yahoo rejects
+// requests without a browser-like User-Agent, so set one.
+builder.Services.AddHttpClient("yahoo", client =>
 {
     client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36");
 });
 builder.Services.AddSingleton<QuoteFetcher>();
 builder.Services.AddSingleton<QuoteRepository>();

@@ -1,8 +1,7 @@
 # StockAggregator
 
-Azure Functions app (.NET 10, isolated worker) that pulls batch stock quotes from
-[Financial Modeling Prep](https://financialmodelingprep.com) on a schedule and writes
-them to SQL Server.
+Azure Functions app (.NET 10, isolated worker) that pulls stock quotes from
+[Yahoo Finance](https://finance.yahoo.com) on a schedule and writes them to SQL Server.
 
 ## What it does
 
@@ -25,7 +24,7 @@ a run label (e.g. `08:30 CT`).
 ```
 Program.cs                         DI wiring (HttpClient + services)
 Functions/MarketSnapshotFunctions  The four timer triggers
-Services/QuoteFetcher              Calls FMP, deserializes into StockQuote
+Services/QuoteFetcher              Calls Yahoo Finance, parses into StockQuote
 Services/QuoteRepository           Parametrized inserts into SQL Server
 Services/SnapshotRunner            Orchestrates fetch + save
 Models/StockQuote                  The quote entity
@@ -36,10 +35,9 @@ sql/001_create_StockQuotes.sql     Database + table DDL (run once)
 
 | Setting               | Purpose                                                        |
 | --------------------- | ------------------------------------------------------------- |
-| `StockSymbols`        | Comma-separated tickers, e.g. `NVDA,AAPL,MSFT`                 |
-| `FinancialDataApiKey` | FMP API key **(secret)**                                      |
-| `SqlConnectionString` | SQL Server connection string **(secret)**                    |
-| `FmpQuoteBaseUrl`     | Optional. Defaults to `https://financialmodelingprep.com/api/v3/quote` |
+| `StockSymbols`        | Comma-separated tickers, e.g. `NVDA,AAPL,MSFT` (non-US need a Yahoo suffix, e.g. `7203.T`) |
+| `SqlConnectionString` | SQL Server connection string. Uses Microsoft Entra — no password (see [README-Azure.md](README-Azure.md)) |
+| `YahooChartBaseUrl`   | Optional. Defaults to `https://query1.finance.yahoo.com/v8/finance/chart` |
 | `WEBSITE_TIME_ZONE`   | Set to `Central Standard Time` so timers run on CT + follow DST |
 
 **Locally** these live in `.env` (git-ignored — never committed). Copy the template
@@ -61,15 +59,15 @@ one home locally: `.env`.
 When you add a new setting, add it to both `.env` and `.env.example` (real value in the
 former, placeholder in the latter).
 
-## A note on the API endpoint
+## A note on the data source
 
-The default endpoint is the **batch quote** endpoint (`/api/v3/quote/{symbols}`),
-because it accepts a comma-separated symbol list and returns exactly the fields we
-store (`price`, `changesPercentage`, `volume`). The `/stable/profile` endpoint you
-linked returns a company profile for a single symbol, which is a different shape. If
-you'd rather use a different FMP endpoint, override `FmpQuoteBaseUrl` — no code change
-needed, as long as the JSON is an array of objects with `symbol`/`price`/
-`changesPercentage`/`volume` fields.
+Quotes come from Yahoo Finance's public **chart** endpoint
+(`/v8/finance/chart/{symbol}`) — no API key or quota. It's one request per symbol;
+`QuoteFetcher` reads `regularMarketPrice`, `regularMarketVolume` and
+`chartPreviousClose` from the response's `meta` block and computes the change percent.
+A symbol that fails is logged and skipped so one bad ticker doesn't sink the run.
+Non-US symbols need a Yahoo suffix (e.g. `7203.T`, `ASML.AS`); a browser-like
+`User-Agent` is required and set on the HttpClient in `Program.cs`.
 
 ## Run locally
 

@@ -31,9 +31,9 @@ token exchange, so no extra NuGet package is required.
 4. Under Configuration, add the following app settings:
    - `SqlConnectionString`: Entra connection string, e.g.
      `Server=tcp:<server>.database.windows.net,1433;Initial Catalog=StockAggregator;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;Authentication=Active Directory Default;`
-   - `FinancialDataApiKey`: your Financial Modeling Prep API key
    - `StockSymbols`: comma-separated ticker list, for example `NVDA,AAPL,MSFT`
-   - `FmpQuoteBaseUrl`: optional, defaults to `https://financialmodelingprep.com/api/v3/quote`
+     (non-US symbols need a Yahoo suffix, e.g. `7203.T`, `ASML.AS`)
+   - `YahooChartBaseUrl`: optional, defaults to `https://query1.finance.yahoo.com/v8/finance/chart`
    - `WEBSITE_TIME_ZONE`: `Central Standard Time`
    - `FUNCTIONS_WORKER_RUNTIME`: `dotnet-isolated`
 5. Publish the app from Visual Studio, VS Code, or the pipeline in [azure-pipelines.yml](azure-pipelines.yml).
@@ -67,9 +67,7 @@ Set these pipeline variables:
 - `AzureServiceConnection`
 - `FunctionAppName`
 - `SqlConnectionString`
-- `FinancialDataApiKey`
 - `StockSymbols`
-- `FmpQuoteBaseUrl`
 
 ## 5. Test it
 

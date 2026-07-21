@@ -3,9 +3,8 @@ using System.Text.Json.Serialization;
 namespace StockAggregator.Models;
 
 /// <summary>
-/// One quote row as returned by Financial Modeling Prep. Property names are
-/// matched case-insensitively during deserialization, so they line up with the
-/// JSON fields regardless of casing.
+/// One quote row. Populated by <see cref="Services.QuoteFetcher"/> from the Yahoo
+/// Finance chart response (ChangesPercentage is computed from price vs. previous close).
 /// </summary>
 public class StockQuote
 {
