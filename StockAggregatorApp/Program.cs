@@ -28,10 +28,15 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Serve the built React app (published into wwwroot) and fall back to index.html
+// for client-side routes. The UI calls the API same-origin, so no CORS in prod.
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseCors(CorsPolicy);
 app.UseMiddleware<ApiKeyMiddleware>();
 
-app.MapGet("/", () => Results.Ok("StockAggregator API. See /api/quotes/week."));
 app.MapControllers();
+app.MapFallbackToFile("index.html");
 
 app.Run();

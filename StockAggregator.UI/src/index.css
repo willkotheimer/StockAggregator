@@ -28,7 +28,7 @@ body {
 }
 
 .app-header {
-  padding: 16px 24px 0;
+  padding: 16px 24px;
   background: var(--lt-blue);
   border-bottom: 1px solid var(--border);
 }
@@ -139,8 +139,17 @@ body {
   letter-spacing: 0.03em;
 }
 
+.row-etf { cursor: pointer; }
 .row-etf td { background: var(--etf); }
 .row-etf:hover td { background: var(--etf-hover); }
+.caret {
+  display: inline-block;
+  width: 0.9em;
+  margin-right: 4px;
+  font-size: 10px;
+  color: var(--accent);
+  vertical-align: middle;
+}
 .row-stock td { background: var(--stock); color: #ffffff; }
 .row-stock:hover td { background: var(--stock-hover); }
 .row-stock .cell-empty { color: rgba(255, 255, 255, 0.7); }

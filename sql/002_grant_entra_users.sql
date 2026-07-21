@@ -27,6 +27,15 @@ ALTER ROLE db_datareader ADD MEMBER [stockaggregator-func];
 ALTER ROLE db_datawriter ADD MEMBER [stockaggregator-func];
 GO
 
+-- The dashboard web app's managed identity. Read-only, so db_datareader only.
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = N'stockaggregator-web')
+BEGIN
+    CREATE USER [stockaggregator-web] FROM EXTERNAL PROVIDER;
+END
+GO
+ALTER ROLE db_datareader ADD MEMBER [stockaggregator-web];
+GO
+
 -- Your own account is the server's Entra admin, which already maps to dbo, so
 -- you do NOT need a database user for local development. Only add one here if you
 -- later remove yourself as admin.

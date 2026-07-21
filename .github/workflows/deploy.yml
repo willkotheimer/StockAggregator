@@ -4,6 +4,15 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'Functions/**'
+      - 'Services/**'
+      - 'Models/**'
+      - 'Program.cs'
+      - 'host.json'
+      - 'StockAggregator.csproj'
+      - 'StockAggregator.Tests/**'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
 jobs:

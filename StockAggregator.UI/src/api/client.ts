@@ -1,6 +1,9 @@
 import type { WeekQuotesResponse } from '../types';
 
-const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5080';
+// In dev the API runs separately on :5080; in a production build the API serves
+// this app, so call it same-origin (relative). Override with VITE_API_BASE_URL.
+const baseUrl =
+  import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? 'http://localhost:5080' : '');
 const apiKey = import.meta.env.VITE_API_KEY ?? '';
 
 export async function fetchWeek(days = 5): Promise<WeekQuotesResponse> {
