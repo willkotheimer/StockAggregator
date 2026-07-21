@@ -1,5 +1,4 @@
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using StockAggregator.Models;
 
@@ -10,12 +9,12 @@ namespace StockAggregator.Services;
 /// </summary>
 public class QuoteRepository
 {
-    private readonly IConfiguration _config;
+    private readonly SqlConnectionFactory _connectionFactory;
     private readonly ILogger<QuoteRepository> _logger;
 
-    public QuoteRepository(IConfiguration config, ILogger<QuoteRepository> logger)
+    public QuoteRepository(SqlConnectionFactory connectionFactory, ILogger<QuoteRepository> logger)
     {
-        _config = config;
+        _connectionFactory = connectionFactory;
         _logger = logger;
     }
 
@@ -31,19 +30,6 @@ public class QuoteRepository
             return 0;
         }
 
-        var baseConnectionString = _config["SqlConnectionString"];
-        if (string.IsNullOrWhiteSpace(baseConnectionString))
-        {
-            throw new InvalidOperationException("App setting 'SqlConnectionString' is not set.");
-        }
-
-        // Fill in the Entra auth mode (managed identity in Azure, interactive locally)
-        // unless the connection string already states one. Override via 'SqlAuthentication'.
-        var connectionString = SqlConnectionStringResolver.Resolve(
-            baseConnectionString,
-            _config["SqlAuthentication"],
-            SqlConnectionStringResolver.IsRunningInAzure());
-
         const string sql = @"
 INSERT INTO dbo.StockQuotes (Symbol, Price, ChangesPercentage, Volume, CapturedAtUtc, RunLabel)
 VALUES (@Symbol, @Price, @ChangesPercentage, @Volume, @CapturedAtUtc, @RunLabel);";
@@ -52,7 +38,7 @@ VALUES (@Symbol, @Price, @ChangesPercentage, @Volume, @CapturedAtUtc, @RunLabel)
 
         try
         {
-            await using var connection = new SqlConnection(connectionString);
+            await using var connection = _connectionFactory.Create();
             await connection.OpenAsync(cancellationToken);
             await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(cancellationToken);
 

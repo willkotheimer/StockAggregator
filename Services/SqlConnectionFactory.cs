@@ -1,0 +1,80 @@
+using Azure.Core;
+using Azure.Identity;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
+
+namespace StockAggregator.Services;
+
+/// <summary>
+/// Creates <see cref="SqlConnection"/>s that authenticate with Microsoft Entra via
+/// an access token (SqlClient's <c>AccessTokenCallback</c>) rather than a password
+/// or the connection-string <c>Authentication</c> keyword — the Entra providers are
+/// no longer built into Microsoft.Data.SqlClient. In Azure the token comes from the
+/// Function App's managed identity; locally it comes from the Azure CLI login
+/// (<c>az login</c>). A connection string that already carries SQL/Windows
+/// credentials is used unchanged.
+/// </summary>
+public sealed class SqlConnectionFactory
+{
+    // Azure SQL Database resource scope for Entra access tokens.
+    private const string DatabaseScope = "https://database.windows.net/.default";
+
+    private readonly string _connectionString;
+    private readonly bool _useEntraToken;
+    private readonly TokenCredential? _credential;
+
+    public SqlConnectionFactory(IConfiguration config)
+    {
+        _connectionString = config["SqlConnectionString"]
+            ?? throw new InvalidOperationException("App setting 'SqlConnectionString' is not set.");
+
+        _useEntraToken = NeedsEntraToken(_connectionString);
+        if (_useEntraToken)
+        {
+            // Cache one credential so tokens are reused across connections.
+            _credential = CreateCredential(IsRunningInAzure());
+        }
+    }
+
+    public SqlConnection Create()
+    {
+        var connection = new SqlConnection(_connectionString);
+        if (_useEntraToken && _credential is { } credential)
+        {
+            connection.AccessTokenCallback = async (_, cancellationToken) =>
+            {
+                var token = await credential.GetTokenAsync(
+                    new TokenRequestContext(new[] { DatabaseScope }),
+                    cancellationToken);
+                return new SqlAuthenticationToken(token.Token, token.ExpiresOn);
+            };
+        }
+
+        return connection;
+    }
+
+    /// <summary>
+    /// True when the connection string relies on Entra — no SQL/Windows credentials
+    /// and no explicit Authentication mode — so an access token should be attached.
+    /// </summary>
+    public static bool NeedsEntraToken(string connectionString)
+    {
+        var builder = new SqlConnectionStringBuilder(connectionString);
+        return builder.Authentication == SqlAuthenticationMethod.NotSpecified
+            && !builder.IntegratedSecurity
+            && string.IsNullOrEmpty(builder.UserID)
+            && string.IsNullOrEmpty(builder.Password);
+    }
+
+    private static TokenCredential CreateCredential(bool runningInAzure) =>
+        runningInAzure
+            ? new ManagedIdentityCredential(ManagedIdentityId.SystemAssigned)
+            : new AzureCliCredential();
+
+    /// <summary>
+    /// True when running in Azure App Service / Functions, detected via a
+    /// host-injected environment variable that is absent on developer machines.
+    /// </summary>
+    private static bool IsRunningInAzure() =>
+        !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WEBSITE_INSTANCE_ID"));
+}
