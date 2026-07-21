@@ -22,9 +22,10 @@ public class DeploymentSmokeTests
         using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
         var response = await client.GetAsync(endpoint);
         var body = await response.Content.ReadAsStringAsync();
+        var headers = string.Join(", ", response.Headers.Select(h => $"{h.Key}={string.Join(";", h.Value)}"));
 
         Assert.True(response.IsSuccessStatusCode,
-            $"Expected success status from deployment smoke test, but got {(int)response.StatusCode}. FUNCTION_APP_URL: '{baseUrl}'. Endpoint: {endpoint}. Body: {body}");
+            $"Expected success status from deployment smoke test, but got {(int)response.StatusCode}. FUNCTION_APP_URL: '{baseUrl}'. Endpoint: {endpoint}. Headers: {headers}. Body: {body}");
         Assert.Contains("Snapshot run completed", body);
     }
 }

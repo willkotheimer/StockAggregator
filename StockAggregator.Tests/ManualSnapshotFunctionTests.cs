@@ -9,19 +9,37 @@ namespace StockAggregator.Tests;
 public class ManualSnapshotFunctionTests
 {
     [Fact]
-    public async Task InvokeAsync_ReturnsOk_WhenRunnerSucceeds()
+    public async Task InvokeAsync_ReturnsOk_WhenRunnerPersistsRows()
     {
-        var function = new ManualSnapshotFunction(new FakeSnapshotRunner(), NullLogger<ManualSnapshotFunction>.Instance);
+        var function = new ManualSnapshotFunction(new FakeSnapshotRunner(1), NullLogger<ManualSnapshotFunction>.Instance);
 
         var result = await function.InvokeAsync(CancellationToken.None);
 
         Assert.Equal(HttpStatusCode.OK, result.StatusCode);
-        Assert.Equal("Snapshot run completed.", result.Body);
+        Assert.Contains("Snapshot run completed", result.Body);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ReturnsInternalServerError_WhenRunnerPersistsNoRows()
+    {
+        var function = new ManualSnapshotFunction(new FakeSnapshotRunner(0), NullLogger<ManualSnapshotFunction>.Instance);
+
+        var result = await function.InvokeAsync(CancellationToken.None);
+
+        Assert.Equal(HttpStatusCode.InternalServerError, result.StatusCode);
+        Assert.Contains("No rows were persisted", result.Body);
     }
 
     private sealed class FakeSnapshotRunner : ISnapshotRunner
     {
-        public Task RunAsync(string runLabel, CancellationToken cancellationToken = default)
-            => Task.CompletedTask;
+        private readonly int _rowsPersisted;
+
+        public FakeSnapshotRunner(int rowsPersisted)
+        {
+            _rowsPersisted = rowsPersisted;
+        }
+
+        public Task<int> RunAsync(string runLabel, CancellationToken cancellationToken = default)
+            => Task.FromResult(_rowsPersisted);
     }
 }

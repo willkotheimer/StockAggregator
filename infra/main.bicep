@@ -23,6 +23,20 @@ param sqlAdminLogin string
 @description('SQL administrator password.')
 param sqlAdminPassword string
 
+@description('Microsoft Entra admin login for the SQL server (a user UPN or a group name).')
+param sqlAadAdminLogin string
+
+@description('Object ID (SID) of the Entra admin user or group.')
+param sqlAadAdminObjectId string
+
+@description('Entra admin principal type: User, Group, or Application.')
+@allowed([
+  'User'
+  'Group'
+  'Application'
+])
+param sqlAadAdminPrincipalType string = 'User'
+
 @description('Stock symbols to fetch, as a comma-separated list.')
 param stockSymbols string = 'AAPL,MSFT,NVDA'
 
@@ -41,7 +55,10 @@ param dotnetRuntimeVersion string = '10.0'
 
 var storageApiVersion = '2023-05-01'
 var storageConnectionString = 'DefaultEndpointsProtocol=https;AccountName=${storage.name};AccountKey=${listKeys(storage.id, storageApiVersion).keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
-var sqlConnectionString = 'Server=tcp:${sqlServer.properties.fullyQualifiedDomainName},1433;Initial Catalog=${sqlDatabase.name};Persist Security Info=False;User ID=${sqlAdminLogin};Password=${sqlAdminPassword};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'
+// Entra (Microsoft Entra ID) authentication — no secret in the string. The app
+// fills in the auth mode at runtime (managed identity in Azure), so no
+// Authentication keyword is needed here.
+var sqlConnectionString = 'Server=tcp:${sqlServer.properties.fullyQualifiedDomainName},1433;Initial Catalog=${sqlDatabase.name};Persist Security Info=False;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'
 
 resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: storageAccountName
@@ -130,6 +147,16 @@ resource sqlServer 'Microsoft.Sql/servers@2022-05-01-preview' = {
     version: '12.0'
     publicNetworkAccess: 'Enabled'
     minimalTlsVersion: '1.2'
+    // Entra admin. SQL auth stays enabled (azureADOnlyAuthentication: false) so
+    // the SQL admin remains a break-glass login. Set to true to require Entra.
+    administrators: {
+      administratorType: 'ActiveDirectory'
+      principalType: sqlAadAdminPrincipalType
+      login: sqlAadAdminLogin
+      sid: sqlAadAdminObjectId
+      tenantId: subscription().tenantId
+      azureADOnlyAuthentication: false
+    }
   }
 }
 
@@ -159,3 +186,4 @@ output functionAppName string = functionApp.name
 output functionAppUrl string = 'https://${functionApp.properties.defaultHostName}'
 output sqlServerFqdn string = sqlServer.properties.fullyQualifiedDomainName
 output sqlDatabaseName string = sqlDatabase.name
+output functionAppPrincipalId string = functionApp.identity.principalId

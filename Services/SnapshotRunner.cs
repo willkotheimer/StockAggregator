@@ -21,16 +21,17 @@ public class SnapshotRunner : ISnapshotRunner
         _logger = logger;
     }
 
-    public async Task RunAsync(string runLabel, CancellationToken cancellationToken = default)
+    public async Task<int> RunAsync(string runLabel, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Starting snapshot run {RunLabel}.", runLabel);
 
         try
         {
             var quotes = await _fetcher.FetchAsync(cancellationToken);
-            await _repository.SaveAsync(quotes, DateTime.UtcNow, runLabel, cancellationToken);
+            var rowsPersisted = await _repository.SaveAsync(quotes, DateTime.UtcNow, runLabel, cancellationToken);
 
-            _logger.LogInformation("Completed snapshot run {RunLabel}.", runLabel);
+            _logger.LogInformation("Completed snapshot run {RunLabel} with {RowCount} rows saved.", runLabel, rowsPersisted);
+            return rowsPersisted;
         }
         catch (Exception ex)
         {

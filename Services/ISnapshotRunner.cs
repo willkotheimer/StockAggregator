@@ -5,5 +5,5 @@ namespace StockAggregator.Services;
 
 public interface ISnapshotRunner
 {
-    Task RunAsync(string runLabel, CancellationToken cancellationToken = default);
+    Task<int> RunAsync(string runLabel, CancellationToken cancellationToken = default);
 }

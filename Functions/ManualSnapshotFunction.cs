@@ -36,7 +36,12 @@ public class ManualSnapshotFunction
 
         try
         {
-            await _runner.RunAsync("manual-http", cancellationToken);
+            var rowsPersisted = await _runner.RunAsync("manual-http", cancellationToken);
+            if (rowsPersisted == 0)
+            {
+                return (HttpStatusCode.InternalServerError, "No rows were persisted during the snapshot run.");
+            }
+
             return (HttpStatusCode.OK, "Snapshot run completed.");
         }
         catch (Exception ex)

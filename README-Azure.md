@@ -1,26 +1,50 @@
 # Azure deployment guide
 
+## Authentication: Microsoft Entra (no SQL passwords)
+
+The app connects to Azure SQL using **Microsoft Entra ID**, not a SQL
+username/password. The connection string uses `Authentication=Active Directory
+Default`, which resolves to:
+
+- the Function App's **system-assigned managed identity** when running in Azure, and
+- your **`az login`** credentials when running locally.
+
+No secret lives in the connection string. `Microsoft.Data.SqlClient` handles the
+token exchange, so no extra NuGet package is required.
+
 ## 1. Create Azure SQL Database
 
-1. Create an Azure SQL logical server in Azure Portal.
+1. Create an Azure SQL logical server in Azure Portal (or via [infra/main.bicep](infra/main.bicep)).
 2. Create a SQL database (for example, `StockAggregator`).
-3. Configure firewall rules so your client or deployment environment can reach it.
-4. Run the SQL script in [sql/001_create_StockQuotes.sql](sql/001_create_StockQuotes.sql) against the database.
-
-If you prefer to use a contained serverless SQL database, the app still works as long as it can reach the server and the table exists.
+3. **Set a Microsoft Entra admin on the server** (SQL server → Microsoft Entra ID →
+   Set admin). This is required before any Entra login works. The Bicep template
+   sets this from the `sqlAadAdminLogin` / `sqlAadAdminObjectId` parameters.
+4. Configure firewall rules so your client or deployment environment can reach it.
+5. Run [sql/001_create_StockQuotes.sql](sql/001_create_StockQuotes.sql) against the database.
 
 ## 2. Create the Function App
 
 1. In Azure Portal, create a Function App using the .NET isolated worker runtime.
 2. Choose a hosting plan and region.
-3. Under Configuration, add the following app settings:
-   - `SqlConnectionString`: the SQL connection string to the Azure SQL database
+3. **Enable the system-assigned managed identity** (Function App → Identity →
+   System assigned → On). The Bicep template already does this.
+4. Under Configuration, add the following app settings:
+   - `SqlConnectionString`: Entra connection string, e.g.
+     `Server=tcp:<server>.database.windows.net,1433;Initial Catalog=StockAggregator;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;Authentication=Active Directory Default;`
    - `FinancialDataApiKey`: your Financial Modeling Prep API key
    - `StockSymbols`: comma-separated ticker list, for example `NVDA,AAPL,MSFT`
    - `FmpQuoteBaseUrl`: optional, defaults to `https://financialmodelingprep.com/api/v3/quote`
    - `WEBSITE_TIME_ZONE`: `Central Standard Time`
    - `FUNCTIONS_WORKER_RUNTIME`: `dotnet-isolated`
-4. Publish the app from Visual Studio, VS Code, or the pipeline in [azure-pipelines.yml](azure-pipelines.yml).
+5. Publish the app from Visual Studio, VS Code, or the pipeline in [azure-pipelines.yml](azure-pipelines.yml).
+
+## 2a. Grant the managed identity access in the database
+
+This is the step most people miss — the connection fails until the identity is a
+database user. Connected to the `StockAggregator` database **as the Entra admin**,
+run [sql/002_grant_entra_users.sql](sql/002_grant_entra_users.sql) after replacing
+`<function-app-name>` with your Function App's name (the DB user name equals the
+app name for a system-assigned identity). Add your own UPN there too for local dev.
 
 ## 3. Verify the schedule
 

@@ -19,7 +19,7 @@ public class QuoteRepository
         _logger = logger;
     }
 
-    public async Task SaveAsync(
+    public async Task<int> SaveAsync(
         IReadOnlyList<StockQuote> quotes,
         DateTime capturedAtUtc,
         string runLabel,
@@ -28,14 +28,21 @@ public class QuoteRepository
         if (quotes.Count == 0)
         {
             _logger.LogWarning("No quotes to save for run {RunLabel}.", runLabel);
-            return;
+            return 0;
         }
 
-        var connectionString = _config["SqlConnectionString"];
-        if (string.IsNullOrWhiteSpace(connectionString))
+        var baseConnectionString = _config["SqlConnectionString"];
+        if (string.IsNullOrWhiteSpace(baseConnectionString))
         {
             throw new InvalidOperationException("App setting 'SqlConnectionString' is not set.");
         }
+
+        // Fill in the Entra auth mode (managed identity in Azure, interactive locally)
+        // unless the connection string already states one. Override via 'SqlAuthentication'.
+        var connectionString = SqlConnectionStringResolver.Resolve(
+            baseConnectionString,
+            _config["SqlAuthentication"],
+            SqlConnectionStringResolver.IsRunningInAzure());
 
         const string sql = @"
 INSERT INTO dbo.StockQuotes (Symbol, Price, ChangesPercentage, Volume, CapturedAtUtc, RunLabel)
@@ -72,6 +79,7 @@ VALUES (@Symbol, @Price, @ChangesPercentage, @Volume, @CapturedAtUtc, @RunLabel)
 
                 await transaction.CommitAsync(cancellationToken);
                 _logger.LogInformation("Saved {Count} quotes for run {RunLabel}.", quotes.Count, runLabel);
+                return quotes.Count;
             }
             catch (Exception ex)
             {
