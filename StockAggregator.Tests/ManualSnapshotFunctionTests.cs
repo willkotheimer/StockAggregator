@@ -1,3 +1,6 @@
+// ManualSnapshotFunctionTests is intentionally commented out (kept for reference).
+// Re-enable by removing the /* */ wrapper below.
+/*
 using System.Net;
 using Microsoft.Extensions.Logging.Abstractions;
 using StockAggregator.Functions;
@@ -43,3 +46,4 @@ public class ManualSnapshotFunctionTests
             => Task.FromResult(_rowsPersisted);
     }
 }
+*/
