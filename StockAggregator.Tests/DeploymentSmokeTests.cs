@@ -7,7 +7,7 @@ namespace StockAggregator.Tests;
 public class DeploymentSmokeTests
 {
     [Fact]
-    public async Task ManualSnapshotEndpoint_ReturnsOk_WhenDeployed()
+    public async Task HealthEndpoint_ReturnsOk_WhenDeployed()
     {
         var baseUrl = Environment.GetEnvironmentVariable("FUNCTION_APP_URL");
         Assert.False(string.IsNullOrWhiteSpace(baseUrl), "FUNCTION_APP_URL must be set for the deployment smoke test.");
@@ -18,7 +18,9 @@ public class DeploymentSmokeTests
         Assert.True(Uri.TryCreate(baseUrl, UriKind.Absolute, out var baseUri),
             $"FUNCTION_APP_URL must be an absolute URI. Current value: '{baseUrl}'");
 
-        var endpoint = new Uri(baseUri, "/api/manual-snapshot");
+        // Hits the health probe (verifies app + DB) rather than the snapshot
+        // endpoint, so a deploy doesn't write stock rows to the database.
+        var endpoint = new Uri(baseUri, "/api/health");
         using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
         var response = await client.GetAsync(endpoint);
         var body = await response.Content.ReadAsStringAsync();
@@ -26,6 +28,6 @@ public class DeploymentSmokeTests
 
         Assert.True(response.IsSuccessStatusCode,
             $"Expected success status from deployment smoke test, but got {(int)response.StatusCode}. FUNCTION_APP_URL: '{baseUrl}'. Endpoint: {endpoint}. Headers: {headers}. Body: {body}");
-        Assert.Contains("Snapshot run completed", body);
+        Assert.Contains("Healthy", body);
     }
 }

@@ -18,6 +18,18 @@ public class QuoteRepository
         _logger = logger;
     }
 
+    /// <summary>
+    /// Verifies the database is reachable and the Entra token is accepted, without
+    /// writing anything. Used by the health endpoint. Throws if the check fails.
+    /// </summary>
+    public async Task CheckDatabaseAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = _connectionFactory.Create();
+        await connection.OpenAsync(cancellationToken);
+        await using var command = new SqlCommand("SELECT 1;", connection);
+        await command.ExecuteScalarAsync(cancellationToken);
+    }
+
     public async Task<int> SaveAsync(
         IReadOnlyList<StockQuote> quotes,
         DateTime capturedAtUtc,
