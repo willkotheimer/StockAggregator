@@ -19,4 +19,13 @@ public class StockQuote
 
     [JsonPropertyName("volume")]
     public long? Volume { get; set; }
+
+    /// <summary>Session high so far (Yahoo regularMarketDayHigh).</summary>
+    public decimal? DayHigh { get; set; }
+
+    /// <summary>Session low so far (Yahoo regularMarketDayLow).</summary>
+    public decimal? DayLow { get; set; }
+
+    /// <summary>Prior session close (Yahoo chartPreviousClose).</summary>
+    public decimal? PreviousClose { get; set; }
 }

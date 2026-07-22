@@ -43,8 +43,8 @@ public class QuoteRepository
         }
 
         const string sql = @"
-INSERT INTO dbo.StockQuotes (Symbol, Price, ChangesPercentage, Volume, CapturedAtUtc, RunLabel)
-VALUES (@Symbol, @Price, @ChangesPercentage, @Volume, @CapturedAtUtc, @RunLabel);";
+INSERT INTO dbo.StockQuotes (Symbol, Price, ChangesPercentage, Volume, DayHigh, DayLow, PreviousClose, CapturedAtUtc, RunLabel)
+VALUES (@Symbol, @Price, @ChangesPercentage, @Volume, @DayHigh, @DayLow, @PreviousClose, @CapturedAtUtc, @RunLabel);";
 
         _logger.LogInformation("Attempting to save {Count} quotes for run {RunLabel}.", quotes.Count, runLabel);
 
@@ -67,6 +67,12 @@ VALUES (@Symbol, @Price, @ChangesPercentage, @Volume, @CapturedAtUtc, @RunLabel)
                         (object?)quote.ChangesPercentage ?? DBNull.Value;
                     command.Parameters.Add("@Volume", System.Data.SqlDbType.BigInt).Value =
                         (object?)quote.Volume ?? DBNull.Value;
+                    command.Parameters.Add("@DayHigh", System.Data.SqlDbType.Decimal).Value =
+                        (object?)quote.DayHigh ?? DBNull.Value;
+                    command.Parameters.Add("@DayLow", System.Data.SqlDbType.Decimal).Value =
+                        (object?)quote.DayLow ?? DBNull.Value;
+                    command.Parameters.Add("@PreviousClose", System.Data.SqlDbType.Decimal).Value =
+                        (object?)quote.PreviousClose ?? DBNull.Value;
                     command.Parameters.Add("@CapturedAtUtc", System.Data.SqlDbType.DateTime2).Value =
                         capturedAtUtc;
                     command.Parameters.Add("@RunLabel", System.Data.SqlDbType.NVarChar, 20).Value =

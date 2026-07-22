@@ -112,6 +112,8 @@ public class QuoteFetcher
         // "previousClose" is often null there.
         var previousClose = ReadDecimal(meta, "chartPreviousClose") ?? ReadDecimal(meta, "previousClose");
         var volume = ReadLong(meta, "regularMarketVolume");
+        var dayHigh = ReadDecimal(meta, "regularMarketDayHigh");
+        var dayLow = ReadDecimal(meta, "regularMarketDayLow");
 
         decimal? changePercent = price.HasValue && previousClose is { } prev && prev != 0m
             ? Math.Round((price.Value - prev) / prev * 100m, 4)
@@ -128,6 +130,9 @@ public class QuoteFetcher
             Price = price,
             ChangesPercentage = changePercent,
             Volume = volume,
+            DayHigh = dayHigh,
+            DayLow = dayLow,
+            PreviousClose = previousClose,
         };
     }
 
