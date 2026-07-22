@@ -23,6 +23,12 @@ async function getJson<T>(path: string): Promise<T> {
 export const fetchWeek = (days = 5) =>
   getJson<WeekQuotesResponse>(`/api/quotes/week?days=${days}`);
 
+export const fetchAvailableDates = () =>
+  getJson<string[]>('/api/quotes/available-dates');
+
+export const fetchDays = (dates: string[]) =>
+  getJson<WeekQuotesResponse>(`/api/quotes/days?dates=${dates.join(',')}`);
+
 export const fetchRotations = () =>
   getJson<RotationResponse>('/api/analytics/rotations');
 

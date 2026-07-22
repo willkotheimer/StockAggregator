@@ -49,12 +49,25 @@ function CellView({ cell }: { cell: QuoteCell | undefined }) {
   );
 }
 
-export default function QuotesTable({ data }: { data: WeekQuotesResponse }) {
-  // Which ETF groups are expanded. Default closed: only ETF rows show.
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+interface QuotesTableProps {
+  data: WeekQuotesResponse;
+  caption?: string;
+  // Optional controlled expand state, so side-by-side day tables expand in sync.
+  expanded?: Set<string>;
+  onToggleGroup?: (etf: string) => void;
+}
 
-  const toggle = (etf: string) =>
-    setExpanded((prev) => {
+export default function QuotesTable({ data, caption, expanded: controlledExpanded, onToggleGroup }: QuotesTableProps) {
+  // Uncontrolled fallback when no expand state is supplied by the parent.
+  const [internalExpanded, setInternalExpanded] = useState<Set<string>>(new Set());
+  const expanded = controlledExpanded ?? internalExpanded;
+
+  const toggle = (etf: string) => {
+    if (onToggleGroup) {
+      onToggleGroup(etf);
+      return;
+    }
+    setInternalExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(etf)) {
         next.delete(etf);
@@ -63,6 +76,7 @@ export default function QuotesTable({ data }: { data: WeekQuotesResponse }) {
       }
       return next;
     });
+  };
 
   // Show every ETF row, plus member rows only for expanded groups.
   const visibleRows = useMemo(
@@ -126,6 +140,7 @@ export default function QuotesTable({ data }: { data: WeekQuotesResponse }) {
 
   return (
     <div className="table-wrap">
+      {caption && <div className="table-caption">{caption}</div>}
       <table className="quotes-table">
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (

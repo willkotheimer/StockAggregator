@@ -44,7 +44,38 @@ public sealed class QuoteQueryService : IQuoteQueryService
         var sinceUtc = DateTime.UtcNow.AddDays(-(tradingDays * 2 + 4));
         var records = await _repository.GetSinceAsync(sinceUtc, cancellationToken);
 
-        if (records.Count == 0)
+        var keepDates = records
+            .Select(r => r.CapturedAtUtc.Date)
+            .Distinct()
+            .OrderByDescending(d => d)
+            .Take(tradingDays)
+            .ToHashSet();
+
+        var kept = records.Where(r => keepDates.Contains(r.CapturedAtUtc.Date)).ToList();
+        return BuildResponse(kept);
+    }
+
+    public async Task<IReadOnlyList<string>> GetAvailableDatesAsync(CancellationToken cancellationToken = default)
+    {
+        var dates = await _repository.GetAvailableDatesAsync(cancellationToken);
+        return dates.Select(d => d.ToString("yyyy-MM-dd")).ToList();
+    }
+
+    public async Task<WeekQuotesResponse> GetDaysAsync(IReadOnlyList<DateTime> dates, CancellationToken cancellationToken = default)
+    {
+        if (dates.Count == 0)
+        {
+            return new WeekQuotesResponse(Array.Empty<SnapshotColumn>(), Array.Empty<SymbolRow>());
+        }
+
+        var records = await _repository.GetForDatesAsync(dates, cancellationToken);
+        return BuildResponse(records);
+    }
+
+    /// <summary>Pivots a set of raw records into the snapshot columns + ETF-grouped rows.</summary>
+    private WeekQuotesResponse BuildResponse(IReadOnlyList<QuoteRecord> kept)
+    {
+        if (kept.Count == 0)
         {
             return new WeekQuotesResponse(Array.Empty<SnapshotColumn>(), Array.Empty<SymbolRow>());
         }
@@ -53,17 +84,6 @@ public sealed class QuoteQueryService : IQuoteQueryService
         // so the UTC date is a safe grouping key for a trading day.
         static string DateKey(DateTime utc) => utc.ToString("yyyy-MM-dd");
         static string SnapshotKey(string date, string runLabel) => $"{date}|{runLabel}";
-
-        var keepDates = records
-            .Select(r => DateKey(r.CapturedAtUtc))
-            .Distinct()
-            .OrderByDescending(d => d, StringComparer.Ordinal)
-            .Take(tradingDays)
-            .ToHashSet(StringComparer.Ordinal);
-
-        var kept = records
-            .Where(r => keepDates.Contains(DateKey(r.CapturedAtUtc)))
-            .ToList();
 
         // Ordered snapshot columns: by date ascending, then by capture time.
         var snapshots = kept
