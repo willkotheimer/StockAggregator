@@ -25,10 +25,13 @@ builder.Services.AddHttpClient("yahoo", client =>
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36");
 });
 builder.Services.AddSingleton<QuoteFetcher>();
+builder.Services.AddSingleton<HistoricalQuoteFetcher>();
 builder.Services.AddSingleton<SqlConnectionFactory>();
 builder.Services.AddSingleton<QuoteRepository>();
+builder.Services.AddSingleton<DailyOhlcRepository>();
 builder.Services.AddSingleton<AnalyticsRepository>();
 builder.Services.AddSingleton<AnalyticsRollupService>();
+builder.Services.AddSingleton<HistoricalBackfillService>();
 builder.Services.AddSingleton<SnapshotRunner>();
 builder.Services.AddSingleton<ISnapshotRunner>(sp => sp.GetRequiredService<SnapshotRunner>());
 
