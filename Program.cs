@@ -27,6 +27,8 @@ builder.Services.AddHttpClient("yahoo", client =>
 builder.Services.AddSingleton<QuoteFetcher>();
 builder.Services.AddSingleton<SqlConnectionFactory>();
 builder.Services.AddSingleton<QuoteRepository>();
+builder.Services.AddSingleton<AnalyticsRepository>();
+builder.Services.AddSingleton<AnalyticsRollupService>();
 builder.Services.AddSingleton<SnapshotRunner>();
 builder.Services.AddSingleton<ISnapshotRunner>(sp => sp.GetRequiredService<SnapshotRunner>());
 
