@@ -18,6 +18,8 @@ builder.Services.AddScoped<IQuoteReadRepository, QuoteReadRepository>();
 builder.Services.AddScoped<IQuoteQueryService, QuoteQueryService>();
 builder.Services.AddScoped<IAnalyticsReadRepository, AnalyticsReadRepository>();
 builder.Services.AddScoped<IAnalyticsQueryService, AnalyticsQueryService>();
+builder.Services.AddScoped<IDailyOhlcReadRepository, DailyOhlcReadRepository>();
+builder.Services.AddScoped<IReboundQueryService, ReboundQueryService>();
 
 // Allow the React dev/published origin(s) from config.
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()

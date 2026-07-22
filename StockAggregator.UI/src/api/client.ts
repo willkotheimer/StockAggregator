@@ -1,4 +1,10 @@
-import type { HiddenSignalResponse, RotationResponse, WeekQuotesResponse } from '../types';
+import type {
+  EtfGroup,
+  HiddenSignalResponse,
+  ReboundResponse,
+  RotationResponse,
+  WeekQuotesResponse,
+} from '../types';
 
 // In dev the API runs separately on :5080; in a production build the API serves
 // this app, so call it same-origin (relative). Override with VITE_API_BASE_URL.
@@ -34,3 +40,11 @@ export const fetchRotations = () =>
 
 export const fetchHiddenSignal = () =>
   getJson<HiddenSignalResponse>('/api/analytics/hidden-signal');
+
+export const fetchEtfGroups = () =>
+  getJson<EtfGroup[]>('/api/analytics/etf-groups');
+
+export const fetchRebound = (symbol: string, mode: 'trough' | 'surge', threshold = 10) =>
+  getJson<ReboundResponse>(
+    `/api/analytics/rebound/${encodeURIComponent(symbol)}?mode=${mode}&threshold=${threshold}`,
+  );

@@ -58,3 +58,56 @@ export interface HiddenSignalResponse {
   asOfDate: string | null;
   signals: HiddenSignal[];
 }
+
+export interface EtfGroup {
+  etf: string;
+  description: string;
+  members: string[];
+}
+
+export interface ReboundEpisode {
+  anchorDate: string;
+  anchorPrice: number;
+  extremeDate: string;
+  extremePrice: number;
+  movePct: number;
+  anchorToExtremeDays: number;
+  extremeToReversalDays: number | null;
+  anchorToReversalDays: number | null;
+}
+
+export interface ReboundCurrent {
+  anchorDate: string;
+  anchorPrice: number;
+  extremeDate: string;
+  extremePrice: number;
+  maxMovePct: number;
+  currentMovePct: number;
+  daysSinceAnchor: number;
+  daysSinceExtreme: number;
+}
+
+export interface ReboundBaseRate {
+  comparableMovePct: number;
+  episodeCount: number;
+  medianReversalDays: number;
+  minReversalDays: number;
+  maxReversalDays: number;
+  shortWindowDays: number;
+  reversedWithinShort: number;
+  longWindowDays: number;
+  reversedWithinLong: number;
+}
+
+export interface ReboundResponse {
+  symbol: string;
+  mode: 'trough' | 'surge';
+  thresholdPct: number;
+  historyStart: string | null;
+  asOfDate: string | null;
+  lastClose: number | null;
+  barCount: number;
+  current: ReboundCurrent | null;
+  baseRate: ReboundBaseRate | null;
+  episodes: ReboundEpisode[];
+}

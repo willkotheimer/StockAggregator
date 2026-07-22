@@ -9,10 +9,12 @@ namespace StockAggregatorApp.Controllers;
 public sealed class AnalyticsController : ControllerBase
 {
     private readonly IAnalyticsQueryService _service;
+    private readonly IReboundQueryService _rebound;
 
-    public AnalyticsController(IAnalyticsQueryService service)
+    public AnalyticsController(IAnalyticsQueryService service, IReboundQueryService rebound)
     {
         _service = service;
+        _rebound = rebound;
     }
 
     /// <summary>ETFs rising while most tracked members are flat/negative (defaults to the latest day).</summary>
@@ -31,5 +33,31 @@ public sealed class AnalyticsController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         return Ok(await _service.GetRotationsAsync(date, cancellationToken));
+    }
+
+    /// <summary>The ETF groups + their member symbols — drives the Rebound tab's pill rows.</summary>
+    [HttpGet("etf-groups")]
+    public ActionResult<IReadOnlyList<EtfGroupDto>> GetEtfGroups() => Ok(_rebound.GetEtfGroups());
+
+    /// <summary>
+    /// Historical rebound base rates for one symbol from the backfilled daily history.
+    /// mode=trough (drawdown → recovery) or mode=surge (run-up → pullback);
+    /// threshold is the minimum move (%) that opens an episode.
+    /// </summary>
+    [HttpGet("rebound/{symbol}")]
+    public async Task<ActionResult<ReboundResponse>> GetRebound(
+        string symbol,
+        [FromQuery] string mode = "trough",
+        [FromQuery] decimal threshold = 10m,
+        CancellationToken cancellationToken = default)
+    {
+        var reboundMode = string.Equals(mode, "surge", StringComparison.OrdinalIgnoreCase)
+            ? ReboundMode.Surge
+            : ReboundMode.Trough;
+
+        // Clamp to a sane band so a bad query can't ask for a 0% or absurd threshold.
+        threshold = Math.Clamp(threshold, 1m, 90m);
+
+        return Ok(await _rebound.GetReboundAsync(symbol, reboundMode, threshold, cancellationToken));
     }
 }
