@@ -482,6 +482,11 @@ body {
 .browse-panel .offcanvas-header { border-bottom: 1px solid var(--border); }
 .browse-panel .offcanvas-title { font-size: 15px; font-weight: 700; }
 
+/* Push the chart right by the panel width when it opens (matches the 0.3s slide). */
+.quotes-main { transition: margin-left 0.3s ease-in-out; }
+.quotes-main.pushed { margin-left: 50vw; }
+@media (max-width: 820px) { .quotes-main.pushed { margin-left: 0; } }
+
 .drawer-open, .drawer-close {
   border: 1px solid var(--border); background: var(--bg); color: var(--text);
   border-radius: 6px; cursor: pointer; font-size: 13px; line-height: 1;

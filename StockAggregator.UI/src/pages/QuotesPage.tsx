@@ -36,13 +36,23 @@ export default function QuotesPage() {
   const didInitDay = useRef(false);
 
   // Bootstrap 5 offcanvas for the browse panel. No backdrop so the chart stays
-  // visible/live behind it while you pick stocks.
+  // visible/live; the chart is pushed right by the panel width when it opens.
   const offcanvasRef = useRef<HTMLDivElement>(null);
   const offcanvas = useRef<Offcanvas | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
   useEffect(() => {
-    if (!offcanvasRef.current) return;
-    offcanvas.current = Offcanvas.getOrCreateInstance(offcanvasRef.current, { backdrop: false, scroll: true });
-    return () => offcanvas.current?.dispose();
+    const el = offcanvasRef.current;
+    if (!el) return;
+    offcanvas.current = Offcanvas.getOrCreateInstance(el, { backdrop: false, scroll: true });
+    const onShow = () => setPanelOpen(true);
+    const onHide = () => setPanelOpen(false);
+    el.addEventListener('show.bs.offcanvas', onShow);
+    el.addEventListener('hide.bs.offcanvas', onHide);
+    return () => {
+      el.removeEventListener('show.bs.offcanvas', onShow);
+      el.removeEventListener('hide.bs.offcanvas', onHide);
+      offcanvas.current?.dispose();
+    };
   }, []);
 
   const availableSet = useMemo(() => new Set(available ?? []), [available]);
@@ -140,8 +150,12 @@ export default function QuotesPage() {
 
   return (
     <section className="page quotes-page">
-      <button type="button" className="drawer-open" onClick={() => offcanvas.current?.show()}>☰ Browse</button>
-      <StockChart symbols={chartSymbols} colorOf={colorOf} onRemove={toggleChart} />
+      <div className={`quotes-main${panelOpen ? ' pushed' : ''}`}>
+        {!panelOpen && (
+          <button type="button" className="drawer-open" onClick={() => offcanvas.current?.show()}>☰ Browse</button>
+        )}
+        <StockChart symbols={chartSymbols} colorOf={colorOf} onRemove={toggleChart} />
+      </div>
 
       <div className="offcanvas offcanvas-start browse-panel" tabIndex={-1} ref={offcanvasRef} aria-labelledby="browseLabel">
         <div className="offcanvas-header">
