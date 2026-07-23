@@ -103,6 +103,7 @@ export interface ReboundResponse {
   symbol: string;
   mode: 'trough' | 'surge';
   thresholdPct: number;
+  currentWindowDays: number;
   historyStart: string | null;
   asOfDate: string | null;
   lastClose: number | null;

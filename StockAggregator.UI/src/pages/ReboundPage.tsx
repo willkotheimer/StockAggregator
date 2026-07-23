@@ -202,7 +202,7 @@ function HeroCard({ rebound, mode }: { rebound: ReboundResponse; mode: Mode }) {
         <>
           <div className="rebound-stats">
             <div className="rebound-stat">
-              <span className="rebound-stat-label">{mode === 'trough' ? 'Peak' : 'Low'}</span>
+              <span className="rebound-stat-label">{rebound.currentWindowDays}d {mode === 'trough' ? 'high' : 'low'}</span>
               <span className="rebound-stat-val">{price(current.anchorPrice)}</span>
               <span className="rebound-stat-sub">{current.anchorDate}</span>
             </div>
@@ -248,9 +248,9 @@ function HeroCard({ rebound, mode }: { rebound: ReboundResponse; mode: Mode }) {
         </>
       ) : (
         <p className="rebound-reco-range">
-          {rebound.symbol} is at or near {mode === 'trough' ? 'its highs' : 'its lows'} — no active{' '}
-          {mode === 'trough' ? 'drawdown' : 'run-up'} of {rebound.thresholdPct}%+ to project from. Switch modes
-          or pick another stock.
+          {rebound.symbol} is within {rebound.thresholdPct}% of its {rebound.currentWindowDays}-day{' '}
+          {mode === 'trough' ? 'high' : 'low'} — no active {mode === 'trough' ? 'drawdown' : 'run-up'} to
+          project from. Switch modes or pick another stock.
         </p>
       )}
 

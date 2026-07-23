@@ -41,6 +41,60 @@ public static class ReboundAnalysis
 
     public sealed record ScanResult(IReadOnlyList<Episode> Completed, Episode? Current);
 
+    /// <summary>
+    /// The current, open episode measured against a rolling window rather than the
+    /// full history — a drawdown from the window's high (trough) or a run-up from
+    /// its low (surge). Bounding to ~200 trading days keeps the benchmark recent: a
+    /// stock that ran up for years and never fell back to an old low would otherwise
+    /// be reported as "surging" from a low several years back. Returns null when the
+    /// stock is currently within <paramref name="thresholdPct"/> of the window
+    /// extreme (i.e. not in a trough/surge right now).
+    /// </summary>
+    public static Episode? CurrentInWindow(IReadOnlyList<DailyClose> bars, int windowDays, decimal thresholdPct, ReboundMode mode)
+    {
+        if (bars.Count == 0)
+        {
+            return null;
+        }
+
+        var trough = mode == ReboundMode.Trough;
+        var start = Math.Max(0, bars.Count - windowDays);
+
+        // Anchor = the window's high (trough) or low (surge).
+        var anchorIdx = start;
+        for (var i = start; i < bars.Count; i++)
+        {
+            if (trough ? bars[i].Close > bars[anchorIdx].Close : bars[i].Close < bars[anchorIdx].Close)
+            {
+                anchorIdx = i;
+            }
+        }
+
+        var anchor = bars[anchorIdx];
+        var last = bars[^1];
+        var currentMove = anchor.Close == 0m
+            ? 0m
+            : (trough ? anchor.Close - last.Close : last.Close - anchor.Close) / anchor.Close * 100m;
+
+        // Not currently far enough from the window extreme to count as a trough/surge.
+        if (currentMove < thresholdPct)
+        {
+            return null;
+        }
+
+        // Extreme reached since the anchor: the trough low / surge high so far.
+        var extremeIdx = anchorIdx;
+        for (var i = anchorIdx; i < bars.Count; i++)
+        {
+            if (trough ? bars[i].Close < bars[extremeIdx].Close : bars[i].Close > bars[extremeIdx].Close)
+            {
+                extremeIdx = i;
+            }
+        }
+
+        return BuildEpisode(anchor.TradingDate, anchor.Close, bars[extremeIdx].TradingDate, bars[extremeIdx].Close, null, trough);
+    }
+
     public static ScanResult Scan(IReadOnlyList<DailyClose> bars, decimal thresholdPct, ReboundMode mode)
     {
         var completed = new List<Episode>();

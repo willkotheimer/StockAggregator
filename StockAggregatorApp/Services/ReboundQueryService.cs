@@ -24,6 +24,10 @@ public sealed class ReboundQueryService : IReboundQueryService
     private const int ShortWindowDays = 90;
     private const int LongWindowDays = 180;
 
+    // The current trough/surge is measured against the high/low of this trailing
+    // window (~200 trading days) so the benchmark stays recent, not years old.
+    private const int CurrentWindowDays = 200;
+
     private readonly IDailyOhlcReadRepository _repository;
     private readonly IReadOnlyList<EtfGroup> _groups;
 
@@ -48,13 +52,16 @@ public sealed class ReboundQueryService : IReboundQueryService
         var bars = await _repository.GetClosesAsync(symbol, cancellationToken);
         if (bars.Count == 0)
         {
-            return new ReboundResponse(symbol, modeText, thresholdPct, null, null, null, 0, null, null, Array.Empty<ReboundEpisodeDto>());
+            return new ReboundResponse(symbol, modeText, thresholdPct, CurrentWindowDays, null, null, null, 0, null, null, Array.Empty<ReboundEpisodeDto>());
         }
 
         var lastBar = bars[^1];
+        // Scan the full history for completed episodes (the table + base rates),
+        // but measure the *current* trough/surge against a recent rolling window.
         var scan = ReboundAnalysis.Scan(bars, thresholdPct, mode);
+        var currentEpisode = ReboundAnalysis.CurrentInWindow(bars, CurrentWindowDays, thresholdPct, mode);
 
-        var current = BuildCurrent(scan.Current, lastBar, mode);
+        var current = BuildCurrent(currentEpisode, lastBar, mode);
         var baseRate = BuildBaseRate(scan.Completed, current?.MaxMovePct ?? thresholdPct);
 
         // Newest episodes first — most relevant at the top of the table.
@@ -69,6 +76,7 @@ public sealed class ReboundQueryService : IReboundQueryService
             Symbol: symbol,
             Mode: modeText,
             ThresholdPct: thresholdPct,
+            CurrentWindowDays: CurrentWindowDays,
             HistoryStart: Fmt(bars[0].TradingDate),
             AsOfDate: Fmt(lastBar.TradingDate),
             LastClose: lastBar.Close,

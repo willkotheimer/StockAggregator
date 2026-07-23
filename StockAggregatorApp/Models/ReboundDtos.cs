@@ -39,6 +39,7 @@ public sealed record ReboundResponse(
     string Symbol,
     string Mode,                 // "trough" | "surge"
     decimal ThresholdPct,
+    int CurrentWindowDays,       // rolling window the current trough/surge is measured against
     string? HistoryStart,
     string? AsOfDate,
     decimal? LastClose,
