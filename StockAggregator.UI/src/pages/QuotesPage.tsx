@@ -129,64 +129,68 @@ export default function QuotesPage() {
 
   return (
     <section className="page quotes-page">
-      <StockChart symbols={chartSymbols} colorOf={colorOf} onRemove={toggleChart} />
-
       {datesLoading && <p>Loading calendar…</p>}
       {datesError && <p className="error">Error: {datesError}</p>}
-      {available && (
-        <Calendar
-          availableDates={availableSet}
-          selected={selected}
-          onToggleDate={toggleDate}
-          onSetDates={(dates) => setSelected(new Set(dates))}
-        />
-      )}
 
-      {groups && visibleEtfs && (
-        <div className="pill-row etf-filter">
-          <span className="pill-caption">ETFs:</span>
-          {groups.map((g) => (
-            <button
-              key={g.etf}
-              type="button"
-              className={`pill pill-etf${visibleEtfs.has(g.etf) ? ' active' : ''}`}
-              title={g.description}
-              onClick={() => toggleEtf(g.etf)}
-            >
-              {g.etf}
-            </button>
-          ))}
-          <button type="button" className="pill" disabled={allShown} onClick={showAllEtfs}>All</button>
-        </div>
-      )}
-
-      {days && sortedDates.length > 0 && shownEtfs.length > 0 && (
-        <div className="pill-row">
-          <button type="button" className="pill" onClick={allExpanded ? collapseAll : openAll}>
-            {allExpanded ? 'Collapse all' : 'Open all'}
-          </button>
-        </div>
-      )}
-
-      <div className="day-tables">
-        {loadingDays && <p>Loading…</p>}
-        {error && <p className="error">Error: {error}</p>}
-        {!loadingDays && !error && sortedDates.length === 0 && (
-          <p className="subtle">Pick one or more days from the calendar to compare side by side.</p>
-        )}
-        {days && sortedDates.map((date) => (
-          <QuotesTable
-            key={date}
-            data={{ snapshots: days.snapshots.filter((s) => s.date === date), rows: filterRows(days.rows) }}
-            caption={formatDate(date)}
-            expanded={expanded}
-            onToggleGroup={toggleGroup}
-            chartSymbols={chartSet}
-            onToggleChart={toggleChart}
-            colorOf={colorOf}
+      <div className="quotes-top">
+        {available && (
+          <Calendar
+            availableDates={availableSet}
+            selected={selected}
+            onToggleDate={toggleDate}
+            onSetDates={(dates) => setSelected(new Set(dates))}
           />
-        ))}
+        )}
+
+        {groups && visibleEtfs && (
+          <div className="pill-row etf-filter">
+            <span className="pill-caption">ETFs:</span>
+            {groups.map((g) => (
+              <button
+                key={g.etf}
+                type="button"
+                className={`pill pill-etf${visibleEtfs.has(g.etf) ? ' active' : ''}`}
+                title={g.description}
+                onClick={() => toggleEtf(g.etf)}
+              >
+                {g.etf}
+              </button>
+            ))}
+            <button type="button" className="pill" disabled={allShown} onClick={showAllEtfs}>All</button>
+          </div>
+        )}
+
+        <div className="quotes-tables-col">
+          {days && sortedDates.length > 0 && shownEtfs.length > 0 && (
+            <div className="pill-row" style={{ marginTop: 0 }}>
+              <button type="button" className="pill" onClick={allExpanded ? collapseAll : openAll}>
+                {allExpanded ? 'Collapse all' : 'Open all'}
+              </button>
+            </div>
+          )}
+          <div className="day-tables">
+            {loadingDays && <p>Loading…</p>}
+            {error && <p className="error">Error: {error}</p>}
+            {!loadingDays && !error && sortedDates.length === 0 && (
+              <p className="subtle">Pick one or more days from the calendar to compare side by side.</p>
+            )}
+            {days && sortedDates.map((date) => (
+              <QuotesTable
+                key={date}
+                data={{ snapshots: days.snapshots.filter((s) => s.date === date), rows: filterRows(days.rows) }}
+                caption={formatDate(date)}
+                expanded={expanded}
+                onToggleGroup={toggleGroup}
+                chartSymbols={chartSet}
+                onToggleChart={toggleChart}
+                colorOf={colorOf}
+              />
+            ))}
+          </div>
+        </div>
       </div>
+
+      <StockChart symbols={chartSymbols} colorOf={colorOf} onRemove={toggleChart} />
     </section>
   );
 }

@@ -474,6 +474,11 @@ body {
 .day-tables { display: flex; gap: 16px; align-items: flex-start; overflow-x: auto; padding-bottom: 8px; }
 .day-tables .table-wrap { flex: 0 0 auto; }
 
+/* Quotes layout: calendar + ETF selector + day tables in one row; chart below. */
+.quotes-top { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 16px; }
+.quotes-top .etf-filter { flex-direction: column; align-items: flex-start; gap: 6px; margin: 0; }
+.quotes-tables-col { flex: 1 1 360px; min-width: 0; }
+
 /* ===================== Theme toggle + dark theme ===================== */
 .app-header { position: relative; }
 .theme-toggle {
@@ -514,6 +519,9 @@ body {
 
 /* Per-component fixes where the light theme hardcodes a light value. */
 :root[data-theme="dark"] .tab.active { color: #ffffff; border-color: var(--accent); }
+/* Active ETF pill hardcodes dark-green text (for the light bright-green pill);
+   on the dark-green dark-mode pill that's invisible, so make it white. */
+:root[data-theme="dark"] .pill-etf.active { color: #ffffff; }
 :root[data-theme="dark"] .cal-cell.avail { background: #1a2440; color: var(--text); }
 :root[data-theme="dark"] .cal-cell.off { color: #46566f; }
 :root[data-theme="dark"] .cal-head button,

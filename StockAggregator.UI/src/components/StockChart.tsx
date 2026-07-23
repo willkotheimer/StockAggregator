@@ -83,7 +83,7 @@ export default function StockChart({ symbols, colorOf, onRemove }: Props) {
       </div>
 
       {symbols.length === 0 ? (
-        <p className="subtle chart-hint">Click any stock in the tables below to chart it — add several to compare.</p>
+        <p className="subtle chart-hint">Click any stock in the tables above to chart it — add several to compare.</p>
       ) : error ? (
         <p className="error">Error: {error}</p>
       ) : (
