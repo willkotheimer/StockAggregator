@@ -473,6 +473,55 @@ body {
 
 .day-tables { display: flex; gap: 16px; align-items: flex-start; overflow-x: auto; padding-bottom: 8px; }
 .day-tables .table-wrap { flex: 0 0 auto; }
+
+/* ===================== Theme toggle + dark theme ===================== */
+.app-header { position: relative; }
+.theme-toggle {
+  position: absolute; top: 14px; right: 20px;
+  width: 34px; height: 34px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--panel); color: var(--text);
+  font-size: 16px; line-height: 1; cursor: pointer;
+}
+.theme-toggle:hover { border-color: var(--accent); }
+
+/* Theme Recharts chrome via CSS (CSS beats Recharts' inline presentation attrs),
+   so every chart follows the theme without per-chart color props. */
+.recharts-cartesian-grid line { stroke: var(--border); }
+.recharts-cartesian-axis-tick-value { fill: var(--muted); }
+.recharts-reference-line line { stroke: var(--muted); }
+.recharts-legend-item-text { color: var(--text) !important; }
+.rot-tick-sym { fill: var(--text); }
+.rot-tick-desc { fill: var(--muted); }
+
+:root[data-theme="dark"] {
+  --bg: #0b1220;
+  --panel: #141d33;
+  --border: #29344c;
+  --text: #e8eefb;
+  --muted: #93a1b8;
+  --etf: #17352b;        /* subtle dark-green tint for ETF rows */
+  --etf-hover: #1e4436;
+  --stock: #1a2440;      /* subtle dark-navy tint for member rows */
+  --stock-hover: #212f52;
+  --accent: #6ea8fe;     /* blue accent (matches the reference) */
+  --header: #1b2743;
+  --header-text: #eaf0fb;
+  --header-accent: #9dc1ff;
+  --maize: #2b4a7a;      /* active-tab background */
+  --lt-blue: #14233f;    /* app header bar */
+  /* --up / --down unchanged: solid green/red pills stay white-text-safe and read on dark */
+}
+
+/* Per-component fixes where the light theme hardcodes a light value. */
+:root[data-theme="dark"] .tab.active { color: #ffffff; border-color: var(--accent); }
+:root[data-theme="dark"] .cal-cell.avail { background: #1a2440; color: var(--text); }
+:root[data-theme="dark"] .cal-cell.off { color: #46566f; }
+:root[data-theme="dark"] .cal-head button,
+:root[data-theme="dark"] .cal-quick button { background: var(--panel); color: var(--text); }
+:root[data-theme="dark"] .crawler-flagged td { background: #17352b; }
+:root[data-theme="dark"] .crawler-flagged:hover td { background: #1e4436; }
+:root[data-theme="dark"] .range-etf-row td { background: #17352b; }
+:root[data-theme="dark"] .range-etf-row:hover td { background: #1e4436; }
 .table-caption {
   padding: 6px 10px;
   font-weight: 600;

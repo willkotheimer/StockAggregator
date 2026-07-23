@@ -62,8 +62,8 @@ export default function RotationsPage() {
     const row = chartData.find((d) => d.etf === payload.value);
     return (
       <g transform={`translate(${x},${y})`}>
-        <text x={-8} y={-1} textAnchor="end" fontSize={12} fontWeight={700} fill="#1a1d21">{payload.value}</text>
-        <text x={-8} y={11} textAnchor="end" fontSize={10} fill="#6b7280">{row?.description ?? ''}</text>
+        <text x={-8} y={-1} textAnchor="end" fontSize={12} fontWeight={700} className="rot-tick-sym">{payload.value}</text>
+        <text x={-8} y={11} textAnchor="end" fontSize={10} className="rot-tick-desc">{row?.description ?? ''}</text>
       </g>
     );
   };

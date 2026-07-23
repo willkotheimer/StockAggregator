@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import QuotesPage from './pages/QuotesPage';
 import RotationsPage from './pages/RotationsPage';
@@ -8,7 +9,18 @@ import CrawlersPage from './pages/CrawlersPage';
 
 const tabClass = ({ isActive }: { isActive: boolean }) => (isActive ? 'tab active' : 'tab');
 
+type Theme = 'light' | 'dark';
+
 export default function App() {
+  const [theme, setTheme] = useState<Theme>(
+    () => (localStorage.getItem('theme') as Theme) || 'dark',
+  );
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
   return (
     <div className="app">
       <header className="app-header">
@@ -21,6 +33,15 @@ export default function App() {
           <NavLink to="/ranges" className={tabClass}>Ranges</NavLink>
           <NavLink to="/crawlers" className={tabClass}>Crawlers</NavLink>
         </nav>
+        <button
+          type="button"
+          className="theme-toggle"
+          onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          aria-label="Toggle theme"
+        >
+          {theme === 'dark' ? '☀' : '☾'}
+        </button>
       </header>
       <main className="app-main">
         <Routes>
