@@ -19,6 +19,7 @@ public sealed class SqlConnectionFactory
     private readonly string _connectionString;
     private readonly bool _useEntraToken;
     private readonly TokenCredential? _credential;
+    private readonly SqlRetryLogicBaseProvider _openRetryProvider;
 
     public SqlConnectionFactory(IConfiguration config)
     {
@@ -30,11 +31,21 @@ public sealed class SqlConnectionFactory
         {
             _credential = CreateCredential(IsRunningInAzure());
         }
+
+        _openRetryProvider = BuildOpenRetryProvider();
     }
 
     public SqlConnection Create()
     {
-        var connection = new SqlConnection(_connectionString);
+        var connection = new SqlConnection(_connectionString)
+        {
+            // Retry connection opens on transient faults. The database is Azure SQL
+            // serverless and auto-pauses when idle; the first connection after a pause
+            // triggers a resume that can outlast the connection timeout, so a lone
+            // attempt fails (a paused DB was returning 500s on dashboard reads).
+            RetryLogicProvider = _openRetryProvider,
+        };
+
         if (_useEntraToken && _credential is { } credential)
         {
             connection.AccessTokenCallback = async (_, cancellationToken) =>
@@ -47,6 +58,26 @@ public sealed class SqlConnectionFactory
         }
 
         return connection;
+    }
+
+    /// <summary>Exponential-backoff retry for connection opens, tuned for serverless
+    /// resume (40613 "database not currently available", the 4919x busy codes, and
+    /// -2 connection timeout).</summary>
+    private static SqlRetryLogicBaseProvider BuildOpenRetryProvider()
+    {
+        var options = new SqlRetryLogicOption
+        {
+            NumberOfTries = 4,
+            DeltaTime = TimeSpan.FromSeconds(4),
+            MaxTimeInterval = TimeSpan.FromSeconds(20),
+            TransientErrors = new List<int>
+            {
+                -2, 40613, 40197, 40501, 40540, 42108, 42109,
+                49918, 49919, 49920, 4060, 4221, 1205, 233, 10928, 10929, 10053, 10054, 10060, 64, 20, 0,
+            },
+        };
+
+        return SqlConfigurableRetryFactory.CreateExponentialRetryProvider(options);
     }
 
     private static bool NeedsEntraToken(string connectionString)
