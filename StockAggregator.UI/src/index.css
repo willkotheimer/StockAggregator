@@ -159,13 +159,14 @@ body {
 .price { font-variant-numeric: tabular-nums; }
 .chg {
   font-size: 11px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  background: #ffffff;
+  color: #ffffff;
   border-radius: 4px;
-  padding: 1px 4px;
+  padding: 1px 5px;
 }
-.chg.up { color: var(--up); }
-.chg.down { color: var(--down); }
+.chg.up { background: var(--up); }
+.chg.down { background: var(--down); }
 .cell-empty { color: var(--muted); }
 
 .error { color: var(--down); }
