@@ -474,10 +474,29 @@ body {
 .day-tables { display: flex; gap: 16px; align-items: flex-start; overflow-x: auto; padding-bottom: 8px; }
 .day-tables .table-wrap { flex: 0 0 auto; }
 
-/* Quotes layout: calendar + ETF selector + day tables in one row; chart below. */
-.quotes-top { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 16px; }
-.quotes-top .etf-filter { flex-direction: column; align-items: flex-start; gap: 6px; margin: 0; }
-.quotes-tables-col { flex: 1 1 360px; min-width: 0; }
+/* Quotes: left popout panel (calendar + ETF filter + tables) beside the chart page. */
+.quotes-shell { display: flex; gap: 16px; align-items: flex-start; }
+.quotes-drawer {
+  flex: 0 0 380px; width: 380px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px; max-height: calc(100vh - 150px); overflow: auto;
+}
+.quotes-drawer.closed { display: none; }
+.quotes-main { flex: 1 1 0; min-width: 0; }
+.drawer-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.drawer-title { font-weight: 700; font-size: 14px; }
+.drawer-close, .drawer-open {
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  border-radius: 6px; cursor: pointer; font-size: 13px; line-height: 1;
+}
+.drawer-close { width: 28px; height: 28px; padding: 0; }
+.drawer-open { margin-bottom: 12px; padding: 6px 12px; }
+.drawer-close:hover, .drawer-open:hover { border-color: var(--accent); }
+
+/* Chart hero header */
+.chart-hero { margin-bottom: 10px; }
+.chart-hero-title { margin: 0; font-size: 20px; }
+.chart-hero-summary { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
 
 /* ===================== Theme toggle + dark theme ===================== */
 .app-header { position: relative; }

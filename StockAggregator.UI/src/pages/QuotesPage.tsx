@@ -32,6 +32,7 @@ export default function QuotesPage() {
   const [visibleEtfs, setVisibleEtfs] = useState<Set<string> | null>(null);
   // Symbols plotted on the comparison chart, in selection order.
   const [chartSymbols, setChartSymbols] = useState<string[]>([]);
+  const [drawerOpen, setDrawerOpen] = useState(true);
   const didInitDay = useRef(false);
 
   const availableSet = useMemo(() => new Set(available ?? []), [available]);
@@ -129,50 +130,55 @@ export default function QuotesPage() {
 
   return (
     <section className="page quotes-page">
-      {datesLoading && <p>Loading calendar…</p>}
-      {datesError && <p className="error">Error: {datesError}</p>}
-
-      <div className="quotes-top">
-        {available && (
-          <Calendar
-            availableDates={availableSet}
-            selected={selected}
-            onToggleDate={toggleDate}
-            onSetDates={(dates) => setSelected(new Set(dates))}
-          />
-        )}
-
-        {groups && visibleEtfs && (
-          <div className="pill-row etf-filter">
-            <span className="pill-caption">ETFs:</span>
-            {groups.map((g) => (
-              <button
-                key={g.etf}
-                type="button"
-                className={`pill pill-etf${visibleEtfs.has(g.etf) ? ' active' : ''}`}
-                title={g.description}
-                onClick={() => toggleEtf(g.etf)}
-              >
-                {g.etf}
-              </button>
-            ))}
-            <button type="button" className="pill" disabled={allShown} onClick={showAllEtfs}>All</button>
+      <div className="quotes-shell">
+        <aside className={`quotes-drawer${drawerOpen ? '' : ' closed'}`}>
+          <div className="drawer-head">
+            <span className="drawer-title">Browse</span>
+            <button type="button" className="drawer-close" onClick={() => setDrawerOpen(false)} aria-label="Hide panel">✕</button>
           </div>
-        )}
 
-        <div className="quotes-tables-col">
+          {datesLoading && <p>Loading calendar…</p>}
+          {datesError && <p className="error">Error: {datesError}</p>}
+          {available && (
+            <Calendar
+              availableDates={availableSet}
+              selected={selected}
+              onToggleDate={toggleDate}
+              onSetDates={(dates) => setSelected(new Set(dates))}
+            />
+          )}
+
+          {groups && visibleEtfs && (
+            <div className="pill-row etf-filter">
+              <span className="pill-caption">ETFs:</span>
+              {groups.map((g) => (
+                <button
+                  key={g.etf}
+                  type="button"
+                  className={`pill pill-etf${visibleEtfs.has(g.etf) ? ' active' : ''}`}
+                  title={g.description}
+                  onClick={() => toggleEtf(g.etf)}
+                >
+                  {g.etf}
+                </button>
+              ))}
+              <button type="button" className="pill" disabled={allShown} onClick={showAllEtfs}>All</button>
+            </div>
+          )}
+
           {days && sortedDates.length > 0 && shownEtfs.length > 0 && (
-            <div className="pill-row" style={{ marginTop: 0 }}>
+            <div className="pill-row">
               <button type="button" className="pill" onClick={allExpanded ? collapseAll : openAll}>
                 {allExpanded ? 'Collapse all' : 'Open all'}
               </button>
             </div>
           )}
+
           <div className="day-tables">
             {loadingDays && <p>Loading…</p>}
             {error && <p className="error">Error: {error}</p>}
             {!loadingDays && !error && sortedDates.length === 0 && (
-              <p className="subtle">Pick one or more days from the calendar to compare side by side.</p>
+              <p className="subtle">Pick one or more days from the calendar.</p>
             )}
             {days && sortedDates.map((date) => (
               <QuotesTable
@@ -187,10 +193,15 @@ export default function QuotesPage() {
               />
             ))}
           </div>
+        </aside>
+
+        <div className="quotes-main">
+          {!drawerOpen && (
+            <button type="button" className="drawer-open" onClick={() => setDrawerOpen(true)}>☰ Browse</button>
+          )}
+          <StockChart symbols={chartSymbols} colorOf={colorOf} onRemove={toggleChart} />
         </div>
       </div>
-
-      <StockChart symbols={chartSymbols} colorOf={colorOf} onRemove={toggleChart} />
     </section>
   );
 }
