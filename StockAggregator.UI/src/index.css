@@ -314,6 +314,31 @@ body {
 .rebound-table td, .rebound-table th { position: static; }
 
 .pill-caption { align-self: center; font-size: 12px; color: var(--muted); }
+
+/* Correlation heatmap */
+.corr-grid { border-collapse: separate; border-spacing: 2px; font-size: 11px; font-variant-numeric: tabular-nums; }
+.corr-grid th { font-weight: 600; color: var(--text); padding: 2px 4px; }
+.corr-colhead { text-align: center; }
+.corr-rowhead { text-align: right; position: sticky; left: 0; background: var(--panel); }
+.corr-corner { position: sticky; left: 0; background: var(--panel); }
+.corr-cell {
+  width: 42px; height: 30px;
+  text-align: center;
+  border-radius: 3px;
+  cursor: default;
+}
+.corr-legend { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 11px; color: var(--muted); }
+.corr-legend-bar {
+  display: inline-block; width: 160px; height: 10px; border-radius: 5px;
+  background: linear-gradient(to right, #2a78d6, #f0efec, #d64545);
+}
+.corr-pairs { display: flex; gap: 32px; flex-wrap: wrap; margin-top: 16px; }
+.corr-pair-col h3 { margin: 0 0 6px; font-size: 13px; }
+.corr-pair-row {
+  display: flex; justify-content: space-between; gap: 18px;
+  font-size: 13px; padding: 2px 0; font-variant-numeric: tabular-nums;
+}
+.corr-pair-val { font-weight: 700; }
 .range-etf-row td { background: #eef4ec; font-weight: 600; }
 .range-etf-row:hover td { background: #e6efe3; }
 

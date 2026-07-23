@@ -1,4 +1,5 @@
 import type {
+  CorrelationResponse,
   EtfGroup,
   HiddenSignalResponse,
   RangeResponse,
@@ -52,3 +53,6 @@ export const fetchRebound = (symbol: string, mode: 'trough' | 'surge', threshold
 
 export const fetchRanges = (etf: string, pullback = 5) =>
   getJson<RangeResponse>(`/api/analytics/ranges/${encodeURIComponent(etf)}?pullback=${pullback}`);
+
+export const fetchCorrelations = (window = 60) =>
+  getJson<CorrelationResponse>(`/api/analytics/correlations?window=${window}`);

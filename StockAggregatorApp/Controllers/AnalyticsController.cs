@@ -11,12 +11,18 @@ public sealed class AnalyticsController : ControllerBase
     private readonly IAnalyticsQueryService _service;
     private readonly IReboundQueryService _rebound;
     private readonly IRangeQueryService _ranges;
+    private readonly ICorrelationQueryService _correlations;
 
-    public AnalyticsController(IAnalyticsQueryService service, IReboundQueryService rebound, IRangeQueryService ranges)
+    public AnalyticsController(
+        IAnalyticsQueryService service,
+        IReboundQueryService rebound,
+        IRangeQueryService ranges,
+        ICorrelationQueryService correlations)
     {
         _service = service;
         _rebound = rebound;
         _ranges = ranges;
+        _correlations = correlations;
     }
 
     /// <summary>ETFs rising while most tracked members are flat/negative (defaults to the latest day).</summary>
@@ -76,5 +82,18 @@ public sealed class AnalyticsController : ControllerBase
         pullback = Math.Clamp(pullback, 1m, 50m);
         var result = await _ranges.GetRangesAsync(etf, pullback, cancellationToken);
         return result is null ? NotFound($"Unknown ETF '{etf}'.") : Ok(result);
+    }
+
+    /// <summary>
+    /// Pairwise correlation of the sector ETFs' daily returns over a trailing window
+    /// (heatmap + most-opposing / most-aligned pairs). Companion to the rotation leaderboard.
+    /// </summary>
+    [HttpGet("correlations")]
+    public async Task<ActionResult<CorrelationResponse>> GetCorrelations(
+        [FromQuery] int window = 60,
+        CancellationToken cancellationToken = default)
+    {
+        window = Math.Clamp(window, 15, 250);
+        return Ok(await _correlations.GetCorrelationsAsync(window, cancellationToken));
     }
 }

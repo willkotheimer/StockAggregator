@@ -133,3 +133,19 @@ export interface RangeResponse {
   pullbackPct: number;
   rows: RangeRow[];
 }
+
+export interface CorrelationPair {
+  a: string;
+  b: string;
+  corr: number;
+}
+
+export interface CorrelationResponse {
+  windowDays: number;
+  asOfDate: string | null;
+  symbols: string[];
+  descriptions: string[];
+  matrix: (number | null)[][];
+  mostOpposing: CorrelationPair[];
+  mostAligned: CorrelationPair[];
+}
