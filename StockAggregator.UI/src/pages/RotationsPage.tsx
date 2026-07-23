@@ -3,6 +3,7 @@ import { Bar, BarChart, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis
 import { fetchCorrelations, fetchRotations } from '../api/client';
 import { useApi } from '../hooks/useApi';
 import type { CorrelationResponse } from '../types';
+import QuotesDrilldownModal from '../components/QuotesDrilldownModal';
 
 const UP = '#157f3b';
 const DOWN = '#c62828';
@@ -39,6 +40,7 @@ export default function RotationsPage() {
   const [window, setWindow] = useState(60);
   const [corr, setCorr] = useState<CorrelationResponse | null>(null);
   const [corrErr, setCorrErr] = useState<string | null>(null);
+  const [drill, setDrill] = useState<{ a: string; b: string } | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -65,10 +67,6 @@ export default function RotationsPage() {
       </g>
     );
   };
-
-  // For the heatmap deep-links: today, as YYYY-MM-DD.
-  const now = new Date();
-  const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   return (
     <section className="page rotations-page">
@@ -147,16 +145,15 @@ export default function RotationsPage() {
                         const v = corr.matrix[i][j];
                         return (
                           <td key={colSym} className="corr-cell" style={{ background: corrColor(v) }}>
-                            <a
+                            <button
+                              type="button"
                               className="corr-cell-link"
                               style={{ color: i === j ? '#1a1d21' : corrText(v) }}
-                              href={`/quotes?etfs=${encodeURIComponent(rowSym)},${encodeURIComponent(colSym)}&day=${todayIso}`}
-                              target="_blank"
-                              rel="noopener"
-                              title={`${rowSym} × ${colSym}: ${fmtCorr(v)} — open in Quotes`}
+                              onClick={() => setDrill({ a: rowSym, b: colSym })}
+                              title={`${rowSym} × ${colSym}: ${fmtCorr(v)} — open quotes`}
                             >
                               {i === j ? '1.00' : fmtCorr(v)}
-                            </a>
+                            </button>
                           </td>
                         );
                       })}
@@ -194,6 +191,13 @@ export default function RotationsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {drill && (
+        <QuotesDrilldownModal
+          etfs={drill.a === drill.b ? [drill.a] : [drill.a, drill.b]}
+          onClose={() => setDrill(null)}
+        />
       )}
     </section>
   );
