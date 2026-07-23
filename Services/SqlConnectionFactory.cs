@@ -22,6 +22,7 @@ public sealed class SqlConnectionFactory
     private readonly string _connectionString;
     private readonly bool _useEntraToken;
     private readonly TokenCredential? _credential;
+    private readonly SqlRetryLogicBaseProvider _openRetryProvider;
 
     public SqlConnectionFactory(IConfiguration config)
     {
@@ -34,11 +35,22 @@ public sealed class SqlConnectionFactory
             // Cache one credential so tokens are reused across connections.
             _credential = CreateCredential(IsRunningInAzure());
         }
+
+        _openRetryProvider = BuildOpenRetryProvider();
     }
 
     public SqlConnection Create()
     {
-        var connection = new SqlConnection(_connectionString);
+        var connection = new SqlConnection(_connectionString)
+        {
+            // Retry connection opens on transient faults. The database is Azure SQL
+            // serverless and auto-pauses when idle; the first connection after a pause
+            // triggers a resume that can outlast the connection timeout, so a lone
+            // attempt fails (this is why scheduled snapshots occasionally didn't save).
+            // Retrying rides out the resume automatically.
+            RetryLogicProvider = _openRetryProvider,
+        };
+
         if (_useEntraToken && _credential is { } credential)
         {
             connection.AccessTokenCallback = async (_, cancellationToken) =>
@@ -51,6 +63,32 @@ public sealed class SqlConnectionFactory
         }
 
         return connection;
+    }
+
+    /// <summary>
+    /// Exponential-backoff retry for connection opens, tuned for serverless resume.
+    /// Retries the transient/resume error numbers (40613 "database not currently
+    /// available", the 4919x busy/resume codes, and -2 connection timeout) a few
+    /// times, leaving a slow resume enough time to finish.
+    /// </summary>
+    private static SqlRetryLogicBaseProvider BuildOpenRetryProvider()
+    {
+        var options = new SqlRetryLogicOption
+        {
+            NumberOfTries = 4,
+            DeltaTime = TimeSpan.FromSeconds(4),
+            MaxTimeInterval = TimeSpan.FromSeconds(20),
+            TransientErrors = new List<int>
+            {
+                -2,     // connection timeout (resume outran the timeout)
+                40613,  // database is not currently available (serverless resuming)
+                40197, 40501, 40540, 42108, 42109, // transient service errors
+                49918, 49919, 49920,               // busy / cannot process request now
+                4060, 4221, 1205, 233, 10928, 10929, 10053, 10054, 10060, 64, 20, 0,
+            },
+        };
+
+        return SqlConfigurableRetryFactory.CreateExponentialRetryProvider(options);
     }
 
     /// <summary>
