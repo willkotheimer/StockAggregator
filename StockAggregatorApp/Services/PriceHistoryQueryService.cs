@@ -15,7 +15,7 @@ public interface IPriceHistoryQueryService
 /// </summary>
 public sealed class PriceHistoryQueryService : IPriceHistoryQueryService
 {
-    private const int MaxSymbols = 8;
+    private const int MaxSymbols = 20;
 
     private readonly IDailyOhlcReadRepository _repository;
 

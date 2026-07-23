@@ -381,16 +381,28 @@ body {
   padding: 12px 14px;
   margin-bottom: 16px;
 }
-.chart-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
-.chart-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chart-chip {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: 12px; font-weight: 600;
-  padding: 2px 8px; border-radius: 999px;
-  background: var(--panel); border: 1px solid var(--border); cursor: pointer;
-}
-.chart-chip-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.chart-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
 .chart-hint { margin: 24px 0; text-align: center; }
+
+/* Chart with a left-side selection hierarchy (ETF > members). */
+.chart-row { display: flex; gap: 14px; align-items: stretch; }
+.chart-legend { flex: 0 0 170px; max-height: 490px; overflow: auto; font-size: 13px; border-right: 1px solid var(--border); padding-right: 10px; }
+.chart-plot { flex: 1 1 0; min-width: 0; cursor: pointer; }
+.cl-group { margin-bottom: 8px; }
+.cl-etf { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+.cl-etf .cl-actions { margin-left: auto; display: inline-flex; gap: 4px; }
+.cl-actions button { border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 4px; font-size: 10px; padding: 0 4px; cursor: pointer; }
+.cl-actions button:hover { border-color: var(--accent); color: var(--text); }
+.cl-stock { display: flex; align-items: center; gap: 6px; padding-left: 14px; }
+.cl-standalone { padding-left: 0; }
+.cl-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+.cl-sym { font-variant-numeric: tabular-nums; }
+.cl-x { margin-left: auto; border: none; background: none; color: var(--muted); cursor: pointer; font-size: 12px; }
+.cl-x:hover { color: var(--down); }
+@media (max-width: 640px) {
+  .chart-row { flex-direction: column; }
+  .chart-legend { flex-basis: auto; max-height: none; border-right: none; border-bottom: 1px solid var(--border); padding: 0 0 10px; }
+}
 .chart-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; vertical-align: middle; }
 .row-stock { cursor: pointer; }
 

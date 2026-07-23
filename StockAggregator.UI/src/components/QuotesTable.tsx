@@ -56,14 +56,16 @@ interface QuotesTableProps {
   // Optional controlled expand state, so side-by-side day tables expand in sync.
   expanded?: Set<string>;
   onToggleGroup?: (etf: string) => void;
-  // Optional chart selection: clicking a member row toggles it on the comparison chart.
+  // Optional chart selection: clicking a member row toggles the stock, clicking an
+  // ETF row toggles that ETF (+ its members) on the comparison chart.
   chartSymbols?: Set<string>;
   onToggleChart?: (symbol: string) => void;
+  onToggleEtf?: (etf: string) => void;
   colorOf?: (symbol: string) => string;
 }
 
 export default function QuotesTable({
-  data, caption, expanded: controlledExpanded, onToggleGroup, chartSymbols, onToggleChart, colorOf,
+  data, caption, expanded: controlledExpanded, onToggleGroup, chartSymbols, onToggleChart, onToggleEtf, colorOf,
 }: QuotesTableProps) {
   // Uncontrolled fallback when no expand state is supplied by the parent.
   const [internalExpanded, setInternalExpanded] = useState<Set<string>>(new Set());
@@ -106,9 +108,15 @@ export default function QuotesTable({
       cell: (info) => {
         const row = info.row.original;
         if (row.isEtf) {
+          const inChart = chartSymbols?.has(row.symbol);
           return (
             <span className="symbol symbol-etf">
-              <span className="caret">{expanded.has(row.groupEtf) ? '▾' : '▸'}</span>
+              <span
+                className="caret"
+                onClick={(e) => { e.stopPropagation(); toggle(row.groupEtf); }}
+                title={expanded.has(row.groupEtf) ? 'Collapse' : 'Expand'}
+              >{expanded.has(row.groupEtf) ? '▾' : '▸'}</span>
+              {inChart && <span className="chart-dot" style={{ background: colorOf?.(row.symbol) }} />}
               {info.getValue()}
               {row.description && <span className="etf-desc">{row.description}</span>}
             </span>
@@ -144,7 +152,7 @@ export default function QuotesTable({
     }
 
     return [symbolColumn, ...dayGroups];
-  }, [data.snapshots, expanded, chartSymbols, colorOf]);
+  }, [data.snapshots, expanded, chartSymbols, colorOf]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const table = useReactTable({
     data: visibleRows,
@@ -177,7 +185,7 @@ export default function QuotesTable({
               className={row.original.isEtf ? 'row-etf' : 'row-stock'}
               onClick={
                 row.original.isEtf
-                  ? () => toggle(row.original.groupEtf)
+                  ? (onToggleEtf ? () => onToggleEtf(row.original.groupEtf) : () => toggle(row.original.groupEtf))
                   : onToggleChart
                     ? () => onToggleChart(row.original.symbol)
                     : undefined

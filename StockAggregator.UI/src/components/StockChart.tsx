@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
-  CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
 import { fetchHistory } from '../api/client';
 import type { SymbolSeries } from '../types';
@@ -24,17 +24,23 @@ function fmtRet(v: number): string {
 }
 
 function fmtDate(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`);
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 interface Props {
   symbols: string[];
   colorOf: (symbol: string) => string;
-  onRemove: (symbol: string) => void;
+  etfGroups: { etf: string; members: string[] }[];
+  standalone: string[];
+  onRemoveEtfAll: (etf: string) => void;
+  onRemoveEtfOnly: (etf: string) => void;
+  onRemoveStock: (symbol: string) => void;
+  onPlotClick: () => void;
 }
 
-export default function StockChart({ symbols, colorOf, onRemove }: Props) {
+export default function StockChart({
+  symbols, colorOf, etfGroups, standalone, onRemoveEtfAll, onRemoveEtfOnly, onRemoveStock, onPlotClick,
+}: Props) {
   const [window, setWindow] = useState(126);
   const [normalize, setNormalize] = useState(true);
   const [series, setSeries] = useState<SymbolSeries[]>([]);
@@ -42,10 +48,7 @@ export default function StockChart({ symbols, colorOf, onRemove }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (symbols.length === 0) {
-      setSeries([]);
-      return;
-    }
+    if (symbols.length === 0) { setSeries([]); return; }
     let live = true;
     setLoading(true);
     setError(null);
@@ -56,7 +59,6 @@ export default function StockChart({ symbols, colorOf, onRemove }: Props) {
     return () => { live = false; };
   }, [symbols, window]);
 
-  // Merge per-symbol series into one date-keyed row set for Recharts.
   const data = useMemo(() => {
     const byDate = new Map<string, Record<string, number | string>>();
     for (const s of series) {
@@ -70,7 +72,6 @@ export default function StockChart({ symbols, colorOf, onRemove }: Props) {
     return [...byDate.values()].sort((a, b) => String(a.date).localeCompare(String(b.date)));
   }, [series, normalize]);
 
-  // Simple hero summary: window return per symbol → best / worst.
   const rets = series.map((s) => {
     const f = s.points.find((p) => p.close > 0)?.close ?? 0;
     const l = s.points.length ? s.points[s.points.length - 1].close : 0;
@@ -80,12 +81,12 @@ export default function StockChart({ symbols, colorOf, onRemove }: Props) {
   const worst = rets.length ? rets.reduce((a, b) => (b.ret < a.ret ? b : a)) : null;
 
   let summary: ReactNode;
-  if (symbols.length === 0) summary = 'Pick stocks from the panel to chart them.';
+  if (symbols.length === 0) summary = 'Pick an ETF or stock from the panel to chart it.';
   else if (rets.length === 0) summary = 'Loading…';
   else if (rets.length === 1) summary = <>{best!.symbol} <strong style={{ color: best!.ret >= 0 ? UP : DOWN }}>{fmtRet(best!.ret)}</strong> over {windowLabel(window)}</>;
   else summary = (
     <>
-      {symbols.length} stocks · {windowLabel(window)} — best <strong>{best!.symbol}</strong> <span style={{ color: best!.ret >= 0 ? UP : DOWN }}>{fmtRet(best!.ret)}</span>, worst <strong>{worst!.symbol}</strong> <span style={{ color: worst!.ret >= 0 ? UP : DOWN }}>{fmtRet(worst!.ret)}</span>
+      {symbols.length} symbols · {windowLabel(window)} — best <strong>{best!.symbol}</strong> <span style={{ color: best!.ret >= 0 ? UP : DOWN }}>{fmtRet(best!.ret)}</span>, worst <strong>{worst!.symbol}</strong> <span style={{ color: worst!.ret >= 0 ? UP : DOWN }}>{fmtRet(worst!.ret)}</span>
     </>
   );
 
@@ -107,45 +108,74 @@ export default function StockChart({ symbols, colorOf, onRemove }: Props) {
             {normalize ? '% change' : 'price'}
           </button>
         </div>
-        <div className="chart-chips">
-          {symbols.map((s) => (
-            <button key={s} className="chart-chip" style={{ borderColor: colorOf(s), color: colorOf(s) }} onClick={() => onRemove(s)} title="Remove from chart">
-              <span className="chart-chip-dot" style={{ background: colorOf(s) }} />
-              {s} ✕
-            </button>
-          ))}
-        </div>
       </div>
 
-      {symbols.length === 0 ? (
-        <p className="subtle chart-hint">Open the panel and click stocks to plot them here — add several to compare.</p>
-      ) : error ? (
-        <p className="error">Error: {error}</p>
-      ) : (
-        <div style={{ height: 440, opacity: loading ? 0.6 : 1 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ left: 4, right: 16, top: 8, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e6e7ea" />
-              <XAxis dataKey="date" tickFormatter={fmtDate} minTickGap={48} tick={{ fontSize: 11 }} />
-              <YAxis
-                tickFormatter={(v: number) => (normalize ? `${v > 0 ? '+' : ''}${v.toFixed(0)}%` : `$${v}`)}
-                width={54}
-                tick={{ fontSize: 11 }}
-                domain={['auto', 'auto']}
-              />
-              {normalize && <ReferenceLine y={0} stroke="#b0b4bb" />}
-              <Tooltip
-                labelFormatter={(d) => new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                formatter={(v: number, name: string) => [normalize ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : `$${v.toFixed(2)}`, name]}
-              />
-              <Legend />
-              {symbols.map((s) => (
-                <Line key={s} type="monotone" dataKey={s} stroke={colorOf(s)} strokeWidth={1.8} dot={false} connectNulls isAnimationActive={false} />
+      <div className="chart-row">
+        <aside className="chart-legend">
+          {symbols.length === 0 ? (
+            <p className="subtle" style={{ margin: 0 }}>No symbols selected.</p>
+          ) : (
+            <>
+              {etfGroups.map((g) => (
+                <div key={g.etf} className="cl-group">
+                  <div className="cl-etf">
+                    <span className="cl-dot" style={{ background: colorOf(g.etf) }} />
+                    <span className="cl-sym">{g.etf}</span>
+                    <span className="cl-actions">
+                      <button type="button" title="Remove ETF, keep its stocks" onClick={() => onRemoveEtfOnly(g.etf)}>− etf</button>
+                      <button type="button" title="Remove ETF and its stocks" onClick={() => onRemoveEtfAll(g.etf)}>✕</button>
+                    </span>
+                  </div>
+                  {g.members.map((m) => (
+                    <div key={m} className="cl-stock">
+                      <span className="cl-dot" style={{ background: colorOf(m) }} />
+                      <span className="cl-sym">{m}</span>
+                    </div>
+                  ))}
+                </div>
               ))}
-            </LineChart>
-          </ResponsiveContainer>
+              {standalone.map((s) => (
+                <div key={s} className="cl-stock cl-standalone">
+                  <span className="cl-dot" style={{ background: colorOf(s) }} />
+                  <span className="cl-sym">{s}</span>
+                  <button type="button" className="cl-x" title="Remove" onClick={() => onRemoveStock(s)}>✕</button>
+                </div>
+              ))}
+            </>
+          )}
+        </aside>
+
+        <div className="chart-plot" onClick={onPlotClick} title="Click to toggle the browse panel">
+          {symbols.length === 0 ? (
+            <p className="subtle chart-hint">Open the panel and click an ETF or stock to plot it. Click the chart to toggle the panel.</p>
+          ) : error ? (
+            <p className="error">Error: {error}</p>
+          ) : (
+            <div style={{ height: 440, opacity: loading ? 0.6 : 1 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={data} margin={{ left: 4, right: 16, top: 8, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" tickFormatter={fmtDate} minTickGap={48} tick={{ fontSize: 11 }} />
+                  <YAxis
+                    tickFormatter={(v: number) => (normalize ? `${v > 0 ? '+' : ''}${v.toFixed(0)}%` : `$${v}`)}
+                    width={54}
+                    tick={{ fontSize: 11 }}
+                    domain={['auto', 'auto']}
+                  />
+                  {normalize && <ReferenceLine y={0} />}
+                  <Tooltip
+                    labelFormatter={(d) => new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                    formatter={(v: number, name: string) => [normalize ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : `$${v.toFixed(2)}`, name]}
+                  />
+                  {symbols.map((s) => (
+                    <Line key={s} type="monotone" dataKey={s} stroke={colorOf(s)} strokeWidth={1.8} dot={false} connectNulls isAnimationActive={false} />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
