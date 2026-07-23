@@ -3,6 +3,7 @@ import type {
   CrawlerResponse,
   EtfGroup,
   HiddenSignalResponse,
+  PriceHistoryResponse,
   RangeResponse,
   ReboundResponse,
   RotationResponse,
@@ -60,3 +61,8 @@ export const fetchCorrelations = (window = 60) =>
 
 export const fetchCrawlers = (window = 63) =>
   getJson<CrawlerResponse>(`/api/analytics/crawlers?window=${window}`);
+
+export const fetchHistory = (symbols: string[], window = 126) =>
+  getJson<PriceHistoryResponse>(
+    `/api/analytics/history?symbols=${encodeURIComponent(symbols.join(','))}&window=${window}`,
+  );

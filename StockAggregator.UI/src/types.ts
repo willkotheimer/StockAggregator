@@ -168,3 +168,18 @@ export interface CrawlerResponse {
   asOfDate: string | null;
   rows: CrawlerRow[];
 }
+
+export interface PricePoint {
+  date: string;
+  close: number;
+}
+
+export interface SymbolSeries {
+  symbol: string;
+  points: PricePoint[];
+}
+
+export interface PriceHistoryResponse {
+  windowDays: number;
+  series: SymbolSeries[];
+}

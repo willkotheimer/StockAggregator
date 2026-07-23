@@ -56,9 +56,15 @@ interface QuotesTableProps {
   // Optional controlled expand state, so side-by-side day tables expand in sync.
   expanded?: Set<string>;
   onToggleGroup?: (etf: string) => void;
+  // Optional chart selection: clicking a member row toggles it on the comparison chart.
+  chartSymbols?: Set<string>;
+  onToggleChart?: (symbol: string) => void;
+  colorOf?: (symbol: string) => string;
 }
 
-export default function QuotesTable({ data, caption, expanded: controlledExpanded, onToggleGroup }: QuotesTableProps) {
+export default function QuotesTable({
+  data, caption, expanded: controlledExpanded, onToggleGroup, chartSymbols, onToggleChart, colorOf,
+}: QuotesTableProps) {
   // Uncontrolled fallback when no expand state is supplied by the parent.
   const [internalExpanded, setInternalExpanded] = useState<Set<string>>(new Set());
   const expanded = controlledExpanded ?? internalExpanded;
@@ -109,8 +115,10 @@ export default function QuotesTable({ data, caption, expanded: controlledExpande
           );
         }
         const name = SYMBOL_NAMES[row.symbol];
+        const inChart = chartSymbols?.has(row.symbol);
         return (
           <span className="symbol symbol-member">
+            {inChart && <span className="chart-dot" style={{ background: colorOf?.(row.symbol) }} />}
             {info.getValue()}
             {name && <span className="member-name">{name}</span>}
           </span>
@@ -136,7 +144,7 @@ export default function QuotesTable({ data, caption, expanded: controlledExpande
     }
 
     return [symbolColumn, ...dayGroups];
-  }, [data.snapshots, expanded]);
+  }, [data.snapshots, expanded, chartSymbols, colorOf]);
 
   const table = useReactTable({
     data: visibleRows,
@@ -167,7 +175,13 @@ export default function QuotesTable({ data, caption, expanded: controlledExpande
             <tr
               key={row.id}
               className={row.original.isEtf ? 'row-etf' : 'row-stock'}
-              onClick={row.original.isEtf ? () => toggle(row.original.groupEtf) : undefined}
+              onClick={
+                row.original.isEtf
+                  ? () => toggle(row.original.groupEtf)
+                  : onToggleChart
+                    ? () => onToggleChart(row.original.symbol)
+                    : undefined
+              }
             >
               {row.getVisibleCells().map((cell) => (
                 <td key={cell.id}>

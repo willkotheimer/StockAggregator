@@ -1,10 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { fetchAvailableDates, fetchDays, fetchEtfGroups } from '../api/client';
 import { useApi } from '../hooks/useApi';
 import type { SymbolRow, WeekQuotesResponse } from '../types';
 import Calendar from '../components/Calendar';
 import QuotesTable from '../components/QuotesTable';
+import StockChart from '../components/StockChart';
+
+// Categorical palette (dataviz), assigned to charted symbols in selection order.
+const CHART_PALETTE = ['#2a78d6', '#008300', '#e87ba4', '#eda100', '#1baf7a', '#eb6834', '#4a3aa7', '#e34948'];
 
 function formatDate(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {
@@ -26,6 +30,8 @@ export default function QuotesPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   // null until initialised; then the set of ETF groups currently shown.
   const [visibleEtfs, setVisibleEtfs] = useState<Set<string> | null>(null);
+  // Symbols plotted on the comparison chart, in selection order.
+  const [chartSymbols, setChartSymbols] = useState<string[]>([]);
   const didInitDay = useRef(false);
 
   const availableSet = useMemo(() => new Set(available ?? []), [available]);
@@ -103,6 +109,18 @@ export default function QuotesPage() {
   const openAll = () => setExpanded(new Set(shownEtfs));
   const collapseAll = () => setExpanded(new Set());
 
+  const toggleChart = (symbol: string) =>
+    setChartSymbols((prev) =>
+      prev.includes(symbol)
+        ? prev.filter((s) => s !== symbol)
+        : prev.length >= CHART_PALETTE.length ? prev : [...prev, symbol],
+    );
+  const chartSet = useMemo(() => new Set(chartSymbols), [chartSymbols]);
+  const colorOf = useCallback(
+    (s: string) => CHART_PALETTE[Math.max(0, chartSymbols.indexOf(s)) % CHART_PALETTE.length],
+    [chartSymbols],
+  );
+
   const filterRows = (rows: SymbolRow[]) =>
     visibleEtfs ? rows.filter((r) => visibleEtfs.has(r.groupEtf)) : rows;
 
@@ -111,6 +129,8 @@ export default function QuotesPage() {
 
   return (
     <section className="page quotes-page">
+      <StockChart symbols={chartSymbols} colorOf={colorOf} onRemove={toggleChart} />
+
       {datesLoading && <p>Loading calendar…</p>}
       {datesError && <p className="error">Error: {datesError}</p>}
       {available && (
@@ -161,6 +181,9 @@ export default function QuotesPage() {
             caption={formatDate(date)}
             expanded={expanded}
             onToggleGroup={toggleGroup}
+            chartSymbols={chartSet}
+            onToggleChart={toggleChart}
+            colorOf={colorOf}
           />
         ))}
       </div>

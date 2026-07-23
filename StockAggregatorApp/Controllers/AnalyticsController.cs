@@ -13,19 +13,22 @@ public sealed class AnalyticsController : ControllerBase
     private readonly IRangeQueryService _ranges;
     private readonly ICorrelationQueryService _correlations;
     private readonly ICrawlerQueryService _crawlers;
+    private readonly IPriceHistoryQueryService _history;
 
     public AnalyticsController(
         IAnalyticsQueryService service,
         IReboundQueryService rebound,
         IRangeQueryService ranges,
         ICorrelationQueryService correlations,
-        ICrawlerQueryService crawlers)
+        ICrawlerQueryService crawlers,
+        IPriceHistoryQueryService history)
     {
         _service = service;
         _rebound = rebound;
         _ranges = ranges;
         _correlations = correlations;
         _crawlers = crawlers;
+        _history = history;
     }
 
     /// <summary>ETFs rising while most tracked members are flat/negative (defaults to the latest day).</summary>
@@ -111,5 +114,17 @@ public sealed class AnalyticsController : ControllerBase
     {
         window = Math.Clamp(window, 20, 250);
         return Ok(await _crawlers.GetCrawlersAsync(window, cancellationToken));
+    }
+
+    /// <summary>Daily close history for the comparison chart (comma-separated symbols).</summary>
+    [HttpGet("history")]
+    public async Task<ActionResult<PriceHistoryResponse>> GetHistory(
+        [FromQuery] string symbols = "",
+        [FromQuery] int window = 126,
+        CancellationToken cancellationToken = default)
+    {
+        window = Math.Clamp(window, 10, 520);
+        var list = symbols.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return Ok(await _history.GetHistoryAsync(list, window, cancellationToken));
     }
 }
