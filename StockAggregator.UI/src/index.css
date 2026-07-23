@@ -359,6 +359,19 @@ body {
 }
 .corr-pair-val { font-weight: 700; }
 
+/* Steady Crawlers screener */
+.crawler-table th, .crawler-table td { text-align: right; position: static; padding: 6px 12px; }
+.crawler-table th:first-child, .crawler-table td:first-child { text-align: right; }
+.crawler-table th:nth-child(2), .crawler-table td.crawler-sym { text-align: left; }
+.crawler-sym { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.crawler-ticker { font-weight: 700; }
+.crawler-name { color: var(--muted); font-size: 12px; }
+.crawler-etf { color: var(--accent); font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; }
+.crawler-flagged td { background: #eef6ee; }
+.crawler-flagged:hover td { background: #e6f1e6; }
+.crawler-table .badge { margin-left: 0; background: var(--up); }
+.spark { display: block; }
+
 /* Drill-down modal (from a heatmap cell) */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 100;

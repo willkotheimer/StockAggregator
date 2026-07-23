@@ -149,3 +149,22 @@ export interface CorrelationResponse {
   mostOpposing: CorrelationPair[];
   mostAligned: CorrelationPair[];
 }
+
+export interface CrawlerRow {
+  symbol: string;
+  etf: string;
+  barCount: number;
+  returnPct: number | null;
+  maxDrawdownPct: number | null;
+  upDayPct: number | null;
+  steadiness: number | null;
+  weeklyDriftPct: number | null;
+  isSteadyCrawler: boolean;
+  spark: number[];
+}
+
+export interface CrawlerResponse {
+  windowDays: number;
+  asOfDate: string | null;
+  rows: CrawlerRow[];
+}

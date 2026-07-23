@@ -4,6 +4,7 @@ import RotationsPage from './pages/RotationsPage';
 import SignalsPage from './pages/SignalsPage';
 import ReboundPage from './pages/ReboundPage';
 import RangesPage from './pages/RangesPage';
+import CrawlersPage from './pages/CrawlersPage';
 
 const tabClass = ({ isActive }: { isActive: boolean }) => (isActive ? 'tab active' : 'tab');
 
@@ -18,6 +19,7 @@ export default function App() {
           <NavLink to="/signals" className={tabClass}>Signals</NavLink>
           <NavLink to="/rebound" className={tabClass}>Rebound</NavLink>
           <NavLink to="/ranges" className={tabClass}>Ranges</NavLink>
+          <NavLink to="/crawlers" className={tabClass}>Crawlers</NavLink>
         </nav>
       </header>
       <main className="app-main">
@@ -28,6 +30,7 @@ export default function App() {
           <Route path="/signals" element={<SignalsPage />} />
           <Route path="/rebound" element={<ReboundPage />} />
           <Route path="/ranges" element={<RangesPage />} />
+          <Route path="/crawlers" element={<CrawlersPage />} />
         </Routes>
       </main>
     </div>

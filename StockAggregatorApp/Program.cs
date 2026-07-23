@@ -22,6 +22,7 @@ builder.Services.AddScoped<IDailyOhlcReadRepository, DailyOhlcReadRepository>();
 builder.Services.AddScoped<IReboundQueryService, ReboundQueryService>();
 builder.Services.AddScoped<IRangeQueryService, RangeQueryService>();
 builder.Services.AddScoped<ICorrelationQueryService, CorrelationQueryService>();
+builder.Services.AddScoped<ICrawlerQueryService, CrawlerQueryService>();
 
 // Allow the React dev/published origin(s) from config.
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()

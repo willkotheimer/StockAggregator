@@ -1,5 +1,6 @@
 import type {
   CorrelationResponse,
+  CrawlerResponse,
   EtfGroup,
   HiddenSignalResponse,
   RangeResponse,
@@ -56,3 +57,6 @@ export const fetchRanges = (etf: string, pullback = 5) =>
 
 export const fetchCorrelations = (window = 60) =>
   getJson<CorrelationResponse>(`/api/analytics/correlations?window=${window}`);
+
+export const fetchCrawlers = (window = 63) =>
+  getJson<CrawlerResponse>(`/api/analytics/crawlers?window=${window}`);

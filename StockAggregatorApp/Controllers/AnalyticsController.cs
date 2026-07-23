@@ -12,17 +12,20 @@ public sealed class AnalyticsController : ControllerBase
     private readonly IReboundQueryService _rebound;
     private readonly IRangeQueryService _ranges;
     private readonly ICorrelationQueryService _correlations;
+    private readonly ICrawlerQueryService _crawlers;
 
     public AnalyticsController(
         IAnalyticsQueryService service,
         IReboundQueryService rebound,
         IRangeQueryService ranges,
-        ICorrelationQueryService correlations)
+        ICorrelationQueryService correlations,
+        ICrawlerQueryService crawlers)
     {
         _service = service;
         _rebound = rebound;
         _ranges = ranges;
         _correlations = correlations;
+        _crawlers = crawlers;
     }
 
     /// <summary>ETFs rising while most tracked members are flat/negative (defaults to the latest day).</summary>
@@ -95,5 +98,18 @@ public sealed class AnalyticsController : ControllerBase
     {
         window = Math.Clamp(window, 15, 250);
         return Ok(await _correlations.GetCorrelationsAsync(window, cancellationToken));
+    }
+
+    /// <summary>
+    /// Steady-crawler screener: every tracked member ranked by how steadily it has
+    /// climbed over the window (steadiness = R² of the log-price trend).
+    /// </summary>
+    [HttpGet("crawlers")]
+    public async Task<ActionResult<CrawlerResponse>> GetCrawlers(
+        [FromQuery] int window = 63,
+        CancellationToken cancellationToken = default)
+    {
+        window = Math.Clamp(window, 20, 250);
+        return Ok(await _crawlers.GetCrawlersAsync(window, cancellationToken));
     }
 }
