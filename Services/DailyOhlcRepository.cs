@@ -38,6 +38,29 @@ public sealed class DailyOhlcRepository
     }
 
     /// <summary>
+    /// The earliest bar date each symbol currently has. Lets the backfill skip a
+    /// symbol only when its history already reaches the requested range (depth-aware
+    /// resume), so a deeper re-pull (e.g. 2y → 5y) actually advances instead of
+    /// treating any existing rows as "done".
+    /// </summary>
+    public async Task<IReadOnlyDictionary<string, DateTime>> GetEarliestDatesBySymbolAsync(CancellationToken cancellationToken)
+    {
+        const string sql = "SELECT Symbol, MIN(TradingDate) FROM dbo.DailyOhlc GROUP BY Symbol;";
+
+        var earliest = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+        await using var connection = _connectionFactory.Create();
+        await connection.OpenAsync(cancellationToken);
+        await using var command = new SqlCommand(sql, connection);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            earliest[reader.GetString(0)] = reader.GetDateTime(1);
+        }
+
+        return earliest;
+    }
+
+    /// <summary>
     /// Idempotently replaces one symbol's bars: deletes the symbol's existing rows,
     /// then inserts the fresh set, in a single transaction. Scoped to one symbol so
     /// a re-run overwrites only that symbol and never touches others.

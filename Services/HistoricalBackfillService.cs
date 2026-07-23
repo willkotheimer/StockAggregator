@@ -61,11 +61,19 @@ public sealed class HistoricalBackfillService
     {
         var startedAt = DateTime.UtcNow;
         var symbols = ParseSymbols();
-        var existingCounts = await _repository.GetRowCountsBySymbolAsync(cancellationToken);
+
+        // Depth-aware resume: a symbol is "done" only if its earliest bar already
+        // reaches the requested range. This lets a deeper re-pull (e.g. 2y → 5y)
+        // advance — the old count-based check treated any existing rows as done, so
+        // a plain re-run skipped everything and a force re-ran all 87 and timed out.
+        var cutoff = RangeCutoffUtc(range);
+        var existingEarliest = await _repository.GetEarliestDatesBySymbolAsync(cancellationToken);
+        bool IsDeepEnough(string symbol, IReadOnlyDictionary<string, DateTime> earliest) =>
+            earliest.TryGetValue(symbol, out var e) && e <= cutoff;
 
         var todo = force
             ? symbols
-            : symbols.Where(s => !existingCounts.ContainsKey(s)).ToList();
+            : symbols.Where(s => !IsDeepEnough(s, existingEarliest)).ToList();
 
         var batch = todo.Take(Math.Max(0, batchSize)).ToList();
 
@@ -111,10 +119,11 @@ public sealed class HistoricalBackfillService
             }
         }
 
-        var remainingAfter = force
-            ? 0
-            : symbols.Count(s => !existingCounts.ContainsKey(s) && !batch.Contains(s))
-              + failedSymbols.Count;
+        // Re-read earliest dates so RemainingAfter reflects reality after this run —
+        // and stays truthful: it converges to the count of symbols that simply don't
+        // have the requested depth available (recent listings), rather than oscillating.
+        var freshEarliest = await _repository.GetEarliestDatesBySymbolAsync(cancellationToken);
+        var remainingAfter = symbols.Count(s => !IsDeepEnough(s, freshEarliest));
 
         var result = new BackfillResult(
             TotalSymbols: symbols.Count,
@@ -160,6 +169,28 @@ public sealed class HistoricalBackfillService
                 backoff += backoff; // 1s, 2s, 4s
             }
         }
+    }
+
+    /// <summary>
+    /// The cutoff date at/under which a symbol's earliest bar counts as "already
+    /// deep enough" for the requested Yahoo range. Includes 30 days of slack so a
+    /// first trading bar that lands a couple weeks after the exact range start
+    /// (holidays, listing date) still qualifies. Unknown ranges fall back to 2y.
+    /// </summary>
+    private static DateTime RangeCutoffUtc(string range)
+    {
+        var now = DateTime.UtcNow.Date;
+        range = (range ?? string.Empty).Trim().ToLowerInvariant();
+
+        DateTime start;
+        if (range == "max") start = new DateTime(1900, 1, 1);
+        else if (range == "ytd") start = new DateTime(now.Year, 1, 1);
+        else if (range.EndsWith("mo") && int.TryParse(range[..^2], out var mo)) start = now.AddMonths(-mo);
+        else if (range.EndsWith("y") && int.TryParse(range[..^1], out var y)) start = now.AddYears(-y);
+        else if (range.EndsWith("d") && int.TryParse(range[..^1], out var d)) start = now.AddDays(-d);
+        else start = now.AddYears(-2);
+
+        return start.AddDays(30);
     }
 
     // Same normalization as QuoteFetcher: trim, drop blanks, uppercase, de-dupe.
