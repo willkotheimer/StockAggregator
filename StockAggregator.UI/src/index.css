@@ -315,32 +315,50 @@ body {
 
 .pill-caption { align-self: center; font-size: 12px; color: var(--muted); }
 
-/* Correlation heatmap */
-.corr-grid { border-collapse: separate; border-spacing: 2px; font-size: 11px; font-variant-numeric: tabular-nums; }
+/* Correlation heatmap + pairs, side by side */
+.corr-layout { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+.corr-heat { min-width: 0; }
+
+.corr-grid { border-collapse: separate; border-spacing: 2px; font-size: 13px; font-variant-numeric: tabular-nums; }
 .corr-grid th { font-weight: 600; color: var(--text); padding: 2px 4px; }
-.corr-colhead { text-align: center; }
+
+/* Column headers run vertically so the ETF descriptions fit on the top axis. */
+.corr-colhead { vertical-align: bottom; padding: 0 0 6px; }
+.corr-colhead-inner { writing-mode: vertical-rl; white-space: nowrap; line-height: 1; }
+.corr-colsym { font-weight: 700; }
+.corr-coldesc { color: var(--muted); font-weight: 400; font-size: 12px; }
+
 .corr-rowhead { text-align: right; position: sticky; left: 0; background: var(--panel); white-space: nowrap; padding-right: 6px; }
 .corr-rowsym { font-weight: 700; }
 .corr-rowdesc { color: var(--muted); font-weight: 400; margin-left: 6px; }
 .corr-corner { position: sticky; left: 0; background: var(--panel); }
-.corr-cell {
-  width: 42px; height: 30px;
-  text-align: center;
-  border-radius: 3px;
-  cursor: default;
+
+.corr-cell { width: 48px; height: 34px; padding: 0; border-radius: 3px; }
+.corr-cell-link {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 100%;
+  text-decoration: none; font-weight: 600;
 }
-.corr-legend { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 11px; color: var(--muted); }
+.corr-cell-link:hover { outline: 2px solid var(--text); outline-offset: -2px; }
+
+.corr-legend { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: var(--muted); }
 .corr-legend-bar {
-  display: inline-block; width: 160px; height: 10px; border-radius: 5px;
+  display: inline-block; width: 180px; height: 12px; border-radius: 6px;
   background: linear-gradient(to right, #2a78d6, #f0efec, #d64545);
 }
-.corr-pairs { display: flex; gap: 32px; flex-wrap: wrap; margin-top: 16px; }
-.corr-pair-col h3 { margin: 0 0 6px; font-size: 13px; }
+.corr-pairs { display: flex; flex-direction: column; gap: 18px; }
+.corr-pair-col h3 { margin: 0 0 6px; font-size: 15px; }
 .corr-pair-row {
   display: flex; justify-content: space-between; gap: 18px;
-  font-size: 13px; padding: 2px 0; font-variant-numeric: tabular-nums;
+  font-size: 15px; padding: 3px 0; font-variant-numeric: tabular-nums;
 }
 .corr-pair-val { font-weight: 700; }
+
+/* Bigger type across the Rotations / Correlations page */
+.rotations-page h2 { font-size: 22px; }
+.rotations-page .subtle { font-size: 14px; max-width: 74ch; }
+.rotations-page .asof { font-size: 13px; }
+.rotations-page .pill { font-size: 14px; }
 .range-etf-row td { background: #eef4ec; font-weight: 600; }
 .range-etf-row:hover td { background: #e6efe3; }
 

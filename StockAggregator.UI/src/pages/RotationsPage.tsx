@@ -66,8 +66,12 @@ export default function RotationsPage() {
     );
   };
 
+  // For the heatmap deep-links: today, as YYYY-MM-DD.
+  const now = new Date();
+  const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
   return (
-    <section className="page">
+    <section className="page rotations-page">
       <div className="analytics-head">
         <h2>Rotations</h2>
         <span className="asof">computed as of {data.asOfDate}</span>
@@ -119,47 +123,58 @@ export default function RotationsPage() {
       {corrErr && <p className="error">Error: {corrErr}</p>}
 
       {corr && corr.symbols.length > 0 && (
-        <>
-          <div className="table-wrap" style={{ display: 'inline-block', maxWidth: '100%' }}>
-            <table className="corr-grid">
-              <thead>
-                <tr>
-                  <th className="corr-corner"></th>
-                  {corr.symbols.map((s, i) => (
-                    <th key={s} className="corr-colhead" title={corr.descriptions[i]}>{s}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {corr.symbols.map((rowSym, i) => (
-                  <tr key={rowSym}>
-                    <th className="corr-rowhead">
-                      <span className="corr-rowsym">{rowSym}</span>
-                      <span className="corr-rowdesc">{corr.descriptions[i]}</span>
-                    </th>
-                    {corr.symbols.map((colSym, j) => {
-                      const v = corr.matrix[i][j];
-                      return (
-                        <td
-                          key={colSym}
-                          className="corr-cell"
-                          style={{ background: corrColor(v), color: corrText(v) }}
-                          title={`${rowSym} × ${colSym}: ${fmtCorr(v)}`}
-                        >
-                          {i === j ? '' : fmtCorr(v)}
-                        </td>
-                      );
-                    })}
+        <div className="corr-layout">
+          <div className="corr-heat">
+            <div className="table-wrap" style={{ display: 'inline-block', maxWidth: '100%' }}>
+              <table className="corr-grid">
+                <thead>
+                  <tr>
+                    <th className="corr-corner"></th>
+                    {corr.symbols.map((s, i) => (
+                      <th key={s} className="corr-colhead">
+                        <div className="corr-colhead-inner">
+                          <span className="corr-colsym">{s}</span>
+                          <span className="corr-coldesc">{corr.descriptions[i]}</span>
+                        </div>
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {corr.symbols.map((rowSym, i) => (
+                    <tr key={rowSym}>
+                      <th className="corr-rowhead">
+                        <span className="corr-rowsym">{rowSym}</span>
+                        <span className="corr-rowdesc">{corr.descriptions[i]}</span>
+                      </th>
+                      {corr.symbols.map((colSym, j) => {
+                        const v = corr.matrix[i][j];
+                        return (
+                          <td key={colSym} className="corr-cell" style={{ background: corrColor(v) }}>
+                            <a
+                              className="corr-cell-link"
+                              style={{ color: corrText(v) }}
+                              href={`/quotes?etfs=${encodeURIComponent(rowSym)},${encodeURIComponent(colSym)}&day=${todayIso}`}
+                              target="_blank"
+                              rel="noopener"
+                              title={`${rowSym} × ${colSym}: ${fmtCorr(v)} — open in Quotes`}
+                            >
+                              {i === j ? '' : fmtCorr(v)}
+                            </a>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-          <div className="corr-legend">
-            <span>−1 opposite</span>
-            <span className="corr-legend-bar" />
-            <span>+1 together</span>
+            <div className="corr-legend">
+              <span>−1 opposite</span>
+              <span className="corr-legend-bar" />
+              <span>+1 together</span>
+            </div>
           </div>
 
           <div className="corr-pairs">
@@ -182,7 +197,7 @@ export default function RotationsPage() {
               ))}
             </div>
           </div>
-        </>
+        </div>
       )}
     </section>
   );

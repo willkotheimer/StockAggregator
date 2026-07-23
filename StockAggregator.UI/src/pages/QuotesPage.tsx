@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
-import { fetchAvailableDates, fetchDays } from '../api/client';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { fetchAvailableDates, fetchDays, fetchEtfGroups } from '../api/client';
 import { useApi } from '../hooks/useApi';
-import type { WeekQuotesResponse } from '../types';
+import type { SymbolRow, WeekQuotesResponse } from '../types';
 import Calendar from '../components/Calendar';
 import QuotesTable from '../components/QuotesTable';
 
@@ -15,21 +16,40 @@ function formatDate(iso: string): string {
 
 export default function QuotesPage() {
   const { data: available, loading: datesLoading, error: datesError } = useApi(fetchAvailableDates);
+  const { data: groups } = useApi(fetchEtfGroups);
+  const [searchParams] = useSearchParams();
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [days, setDays] = useState<WeekQuotesResponse | null>(null);
   const [loadingDays, setLoadingDays] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  // null until initialised; then the set of ETF groups currently shown.
+  const [visibleEtfs, setVisibleEtfs] = useState<Set<string> | null>(null);
+  const didInitDay = useRef(false);
 
   const availableSet = useMemo(() => new Set(available ?? []), [available]);
 
-  // Default to the latest available day once the list loads.
+  // One-time day init: a ?day= deep link wins, else default to the latest day.
   useEffect(() => {
-    if (available && available.length > 0) {
-      setSelected((prev) => (prev.size === 0 ? new Set([available[available.length - 1]]) : prev));
+    if (!available || available.length === 0 || didInitDay.current) return;
+    didInitDay.current = true;
+    const dayParam = searchParams.get('day');
+    setSelected(new Set([dayParam && availableSet.has(dayParam) ? dayParam : available[available.length - 1]]));
+  }, [available, availableSet, searchParams]);
+
+  // ETF visibility: a ?etfs= deep link shows only those; otherwise show all.
+  useEffect(() => {
+    if (!groups) return;
+    const all = groups.map((g) => g.etf);
+    const etfsParam = searchParams.get('etfs');
+    if (etfsParam) {
+      const wanted = new Set(etfsParam.split(',').map((s) => s.trim().toUpperCase()));
+      setVisibleEtfs(new Set(all.filter((e) => wanted.has(e.toUpperCase()))));
+    } else {
+      setVisibleEtfs(new Set(all));
     }
-  }, [available]);
+  }, [groups, searchParams]);
 
   // Fetch the selected days' data whenever the selection changes.
   useEffect(() => {
@@ -64,7 +84,21 @@ export default function QuotesPage() {
       return next;
     });
 
+  const toggleEtf = (etf: string) =>
+    setVisibleEtfs((prev) => {
+      const next = new Set(prev ?? []);
+      if (next.has(etf)) next.delete(etf);
+      else next.add(etf);
+      return next;
+    });
+
+  const showAllEtfs = () => setVisibleEtfs(new Set((groups ?? []).map((g) => g.etf)));
+
+  const filterRows = (rows: SymbolRow[]) =>
+    visibleEtfs ? rows.filter((r) => visibleEtfs.has(r.groupEtf)) : rows;
+
   const sortedDates = [...selected].sort();
+  const allShown = groups != null && visibleEtfs != null && visibleEtfs.size === groups.length;
 
   return (
     <section className="page quotes-page">
@@ -79,6 +113,24 @@ export default function QuotesPage() {
         />
       )}
 
+      {groups && visibleEtfs && (
+        <div className="pill-row etf-filter">
+          <span className="pill-caption">ETFs:</span>
+          {groups.map((g) => (
+            <button
+              key={g.etf}
+              type="button"
+              className={`pill pill-etf${visibleEtfs.has(g.etf) ? ' active' : ''}`}
+              title={g.description}
+              onClick={() => toggleEtf(g.etf)}
+            >
+              {g.etf}
+            </button>
+          ))}
+          <button type="button" className="pill" disabled={allShown} onClick={showAllEtfs}>All</button>
+        </div>
+      )}
+
       <div className="day-tables">
         {loadingDays && <p>Loading…</p>}
         {error && <p className="error">Error: {error}</p>}
@@ -88,7 +140,7 @@ export default function QuotesPage() {
         {days && sortedDates.map((date) => (
           <QuotesTable
             key={date}
-            data={{ snapshots: days.snapshots.filter((s) => s.date === date), rows: days.rows }}
+            data={{ snapshots: days.snapshots.filter((s) => s.date === date), rows: filterRows(days.rows) }}
             caption={formatDate(date)}
             expanded={expanded}
             onToggleGroup={toggleGroup}
