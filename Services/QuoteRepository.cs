@@ -30,6 +30,30 @@ public class QuoteRepository
         await command.ExecuteScalarAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// True if any quotes are already stored for the given run label on the UTC day
+    /// of <paramref name="dayUtc"/>. The catch-up uses this to skip a slot that
+    /// already landed (on time or via an earlier catch-up), so it never duplicates.
+    /// </summary>
+    public async Task<bool> HasQuotesForRunAsync(DateTime dayUtc, string runLabel, CancellationToken cancellationToken = default)
+    {
+        const string sql = @"
+SELECT TOP 1 1 FROM dbo.StockQuotes
+WHERE RunLabel = @RunLabel AND CapturedAtUtc >= @DayStart AND CapturedAtUtc < @DayEnd;";
+
+        var dayStart = dayUtc.Date;
+
+        await using var connection = _connectionFactory.Create();
+        await connection.OpenAsync(cancellationToken);
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.Add("@RunLabel", System.Data.SqlDbType.NVarChar, 20).Value = runLabel;
+        command.Parameters.Add("@DayStart", System.Data.SqlDbType.DateTime2).Value = dayStart;
+        command.Parameters.Add("@DayEnd", System.Data.SqlDbType.DateTime2).Value = dayStart.AddDays(1);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is not null and not DBNull;
+    }
+
     public async Task<int> SaveAsync(
         IReadOnlyList<StockQuote> quotes,
         DateTime capturedAtUtc,
