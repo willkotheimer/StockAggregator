@@ -122,14 +122,15 @@ export default function StockChart({
                     <span className="cl-dot" style={{ background: colorOf(g.etf) }} />
                     <span className="cl-sym">{g.etf}</span>
                     <span className="cl-actions">
-                      <button type="button" title="Remove ETF, keep its stocks" onClick={() => onRemoveEtfOnly(g.etf)}>− etf</button>
-                      <button type="button" title="Remove ETF and its stocks" onClick={() => onRemoveEtfAll(g.etf)}>✕</button>
+                      <button type="button" className="cl-btn" title="Remove ETF, keep its stocks" onClick={() => onRemoveEtfOnly(g.etf)}>−</button>
+                      <button type="button" className="cl-btn" title="Remove ETF and its stocks" onClick={() => onRemoveEtfAll(g.etf)}>−all</button>
                     </span>
                   </div>
                   {g.members.map((m) => (
                     <div key={m} className="cl-stock">
                       <span className="cl-dot" style={{ background: colorOf(m) }} />
                       <span className="cl-sym">{m}</span>
+                      <button type="button" className="cl-btn cl-x" title="Remove" onClick={() => onRemoveStock(m)}>−</button>
                     </div>
                   ))}
                 </div>
@@ -138,7 +139,7 @@ export default function StockChart({
                 <div key={s} className="cl-stock cl-standalone">
                   <span className="cl-dot" style={{ background: colorOf(s) }} />
                   <span className="cl-sym">{s}</span>
-                  <button type="button" className="cl-x" title="Remove" onClick={() => onRemoveStock(s)}>✕</button>
+                  <button type="button" className="cl-btn cl-x" title="Remove" onClick={() => onRemoveStock(s)}>−</button>
                 </div>
               ))}
             </>

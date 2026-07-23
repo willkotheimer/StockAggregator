@@ -56,16 +56,16 @@ interface QuotesTableProps {
   // Optional controlled expand state, so side-by-side day tables expand in sync.
   expanded?: Set<string>;
   onToggleGroup?: (etf: string) => void;
-  // Optional chart selection: clicking a member row toggles the stock, clicking an
-  // ETF row toggles that ETF (+ its members) on the comparison chart.
+  // Optional chart selection: clicking a member row toggles the stock; the ETF row
+  // expands the accordion, and its "+" button adds the ETF (+ members) to the chart.
   chartSymbols?: Set<string>;
   onToggleChart?: (symbol: string) => void;
-  onToggleEtf?: (etf: string) => void;
+  onAddEtf?: (etf: string) => void;
   colorOf?: (symbol: string) => string;
 }
 
 export default function QuotesTable({
-  data, caption, expanded: controlledExpanded, onToggleGroup, chartSymbols, onToggleChart, onToggleEtf, colorOf,
+  data, caption, expanded: controlledExpanded, onToggleGroup, chartSymbols, onToggleChart, onAddEtf, colorOf,
 }: QuotesTableProps) {
   // Uncontrolled fallback when no expand state is supplied by the parent.
   const [internalExpanded, setInternalExpanded] = useState<Set<string>>(new Set());
@@ -111,14 +111,18 @@ export default function QuotesTable({
           const inChart = chartSymbols?.has(row.symbol);
           return (
             <span className="symbol symbol-etf">
-              <span
-                className="caret"
-                onClick={(e) => { e.stopPropagation(); toggle(row.groupEtf); }}
-                title={expanded.has(row.groupEtf) ? 'Collapse' : 'Expand'}
-              >{expanded.has(row.groupEtf) ? '▾' : '▸'}</span>
+              <span className="caret">{expanded.has(row.groupEtf) ? '▾' : '▸'}</span>
               {inChart && <span className="chart-dot" style={{ background: colorOf?.(row.symbol) }} />}
               {info.getValue()}
               {row.description && <span className="etf-desc">{row.description}</span>}
+              {onAddEtf && (
+                <button
+                  type="button"
+                  className={`chart-add${inChart ? ' active' : ''}`}
+                  title={inChart ? 'Remove ETF from chart' : 'Add ETF + stocks to chart'}
+                  onClick={(e) => { e.stopPropagation(); onAddEtf(row.groupEtf); }}
+                >+</button>
+              )}
             </span>
           );
         }
@@ -185,7 +189,7 @@ export default function QuotesTable({
               className={row.original.isEtf ? 'row-etf' : 'row-stock'}
               onClick={
                 row.original.isEtf
-                  ? (onToggleEtf ? () => onToggleEtf(row.original.groupEtf) : () => toggle(row.original.groupEtf))
+                  ? () => toggle(row.original.groupEtf)
                   : onToggleChart
                     ? () => onToggleChart(row.original.symbol)
                     : undefined

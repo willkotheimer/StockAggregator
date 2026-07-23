@@ -46,7 +46,8 @@ export default function QuotesPage() {
   useEffect(() => {
     const el = offcanvasRef.current;
     if (!el) return;
-    offcanvas.current = Offcanvas.getOrCreateInstance(el, { backdrop: false, scroll: true });
+    // Transparent backdrop (styled in CSS): click anywhere outside the panel closes it.
+    offcanvas.current = Offcanvas.getOrCreateInstance(el, { backdrop: true, scroll: true });
     const onShow = () => setPanelOpen(true);
     const onHide = () => setPanelOpen(false);
     el.addEventListener('show.bs.offcanvas', onShow);
@@ -139,11 +140,17 @@ export default function QuotesPage() {
     return m;
   }, [groups]);
 
-  // Derive the display hierarchy and the flat, deduped, ordered symbol list.
+  // Members added by an ETF live in selectedStocks too, so any member can be
+  // removed individually. selectedEtfs just tracks which ETF lines are charted
+  // and drives the legend grouping.
   const selection = useMemo(() => {
-    const etfGroups = selectedEtfs.map((etf) => ({ etf, members: membersOf.get(etf) ?? [] }));
-    const memberSet = new Set(etfGroups.flatMap((g) => g.members.map(up)));
-    const standalone = selectedStocks.filter((s) => !memberSet.has(up(s)));
+    const stockSet = new Set(selectedStocks.map(up));
+    const etfGroups = selectedEtfs.map((etf) => ({
+      etf,
+      members: (membersOf.get(etf) ?? []).filter((m) => stockSet.has(up(m))),
+    }));
+    const grouped = new Set(etfGroups.flatMap((g) => g.members.map(up)));
+    const standalone = selectedStocks.filter((s) => !grouped.has(up(s)));
     const ordered: string[] = [];
     const seen = new Set<string>();
     const push = (sym: string) => { if (!seen.has(up(sym))) { seen.add(up(sym)); ordered.push(sym); } };
@@ -160,17 +167,18 @@ export default function QuotesPage() {
     [chartSymbols],
   );
 
+  const addEtf = (etf: string) => {
+    setSelectedEtfs((p) => (p.some((e) => up(e) === up(etf)) ? p : [...p, etf]));
+    const members = membersOf.get(etf) ?? [];
+    setSelectedStocks((p) => { const have = new Set(p.map(up)); return [...p, ...members.filter((m) => !have.has(up(m)))]; });
+  };
   const removeEtfAll = (etf: string) => {
     setSelectedEtfs((p) => p.filter((e) => up(e) !== up(etf)));
     const members = new Set((membersOf.get(etf) ?? []).map(up));
     setSelectedStocks((p) => p.filter((s) => !members.has(up(s))));
   };
-  const removeEtfOnly = (etf: string) => {
-    const members = membersOf.get(etf) ?? [];
-    setSelectedEtfs((p) => p.filter((e) => up(e) !== up(etf)));
-    setSelectedStocks((p) => { const have = new Set(p.map(up)); return [...p, ...members.filter((m) => !have.has(up(m)))]; });
-  };
-  const toggleChartEtf = (etf: string) => (etfSelected.has(up(etf)) ? removeEtfAll(etf) : setSelectedEtfs((p) => [...p, etf]));
+  const removeEtfOnly = (etf: string) => setSelectedEtfs((p) => p.filter((e) => up(e) !== up(etf)));
+  const toggleChartEtf = (etf: string) => (etfSelected.has(up(etf)) ? removeEtfAll(etf) : addEtf(etf));
   const toggleStock = (symbol: string) =>
     setSelectedStocks((p) => (p.some((s) => up(s) === up(symbol)) ? p.filter((s) => up(s) !== up(symbol)) : [...p, symbol]));
   const removeStock = (symbol: string) => setSelectedStocks((p) => p.filter((s) => up(s) !== up(symbol)));
@@ -195,7 +203,7 @@ export default function QuotesPage() {
           onRemoveEtfAll={removeEtfAll}
           onRemoveEtfOnly={removeEtfOnly}
           onRemoveStock={removeStock}
-          onPlotClick={() => offcanvas.current?.toggle()}
+          onPlotClick={() => offcanvas.current?.show()}
         />
       </div>
 
@@ -257,7 +265,7 @@ export default function QuotesPage() {
                 onToggleGroup={toggleGroup}
                 chartSymbols={chartSet}
                 onToggleChart={toggleStock}
-                onToggleEtf={toggleChartEtf}
+                onAddEtf={toggleChartEtf}
                 colorOf={colorOf}
               />
             ))}
