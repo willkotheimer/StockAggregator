@@ -94,6 +94,15 @@ export default function QuotesPage() {
 
   const showAllEtfs = () => setVisibleEtfs(new Set((groups ?? []).map((g) => g.etf)));
 
+  // Expand/collapse every ETF group at once (only the ones currently shown).
+  const shownEtfs = useMemo(
+    () => (groups ?? []).map((g) => g.etf).filter((e) => !visibleEtfs || visibleEtfs.has(e)),
+    [groups, visibleEtfs],
+  );
+  const allExpanded = shownEtfs.length > 0 && shownEtfs.every((e) => expanded.has(e));
+  const openAll = () => setExpanded(new Set(shownEtfs));
+  const collapseAll = () => setExpanded(new Set());
+
   const filterRows = (rows: SymbolRow[]) =>
     visibleEtfs ? rows.filter((r) => visibleEtfs.has(r.groupEtf)) : rows;
 
@@ -128,6 +137,14 @@ export default function QuotesPage() {
             </button>
           ))}
           <button type="button" className="pill" disabled={allShown} onClick={showAllEtfs}>All</button>
+        </div>
+      )}
+
+      {days && sortedDates.length > 0 && shownEtfs.length > 0 && (
+        <div className="pill-row">
+          <button type="button" className="pill" onClick={allExpanded ? collapseAll : openAll}>
+            {allExpanded ? 'Collapse all' : 'Open all'}
+          </button>
         </div>
       )}
 
