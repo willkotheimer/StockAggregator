@@ -6,7 +6,7 @@ import SignalsPage from './pages/SignalsPage';
 import ReboundPage from './pages/ReboundPage';
 import RangesPage from './pages/RangesPage';
 import CrawlersPage from './pages/CrawlersPage';
-import OverviewPanel from './components/OverviewPanel';
+import OverviewHero from './components/OverviewHero';
 
 const tabClass = ({ isActive }: { isActive: boolean }) => (isActive ? 'tab active' : 'tab');
 
@@ -25,10 +25,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div className="app-title-row">
-          <h1>StockAggregator</h1>
-          <OverviewPanel />
-        </div>
+        <h1>StockAggregator</h1>
         <nav className="tabs">
           <NavLink to="/quotes" className={tabClass}>Quotes</NavLink>
           <NavLink to="/rotations" className={tabClass}>Rotations</NavLink>
@@ -48,6 +45,7 @@ export default function App() {
         </button>
       </header>
       <main className="app-main">
+        <OverviewHero />
         <Routes>
           <Route path="/" element={<Navigate to="/quotes" replace />} />
           <Route path="/quotes" element={<QuotesPage />} />
