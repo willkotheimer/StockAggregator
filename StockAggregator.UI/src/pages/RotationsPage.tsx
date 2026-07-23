@@ -23,6 +23,8 @@ function corrColor(v: number | null): string {
 
 function corrText(v: number | null): string {
   if (v == null) return 'var(--muted)';
+  // The red (positive) pole reads better with black; only strong blue takes white.
+  if (v >= 0) return '#1a1d21';
   return Math.abs(v) > 0.55 ? '#fff' : '#1a1d21';
 }
 
@@ -53,6 +55,17 @@ export default function RotationsPage() {
 
   const chartData = data.rows.map((r) => ({ etf: r.etf, description: r.description, changePct: r.changePct ?? 0 }));
 
+  // Two-line Y-axis tick: ticker on top, ETF description beneath.
+  const renderEtfTick = ({ x, y, payload }: { x: number; y: number; payload: { value: string } }) => {
+    const row = chartData.find((d) => d.etf === payload.value);
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text x={-8} y={-1} textAnchor="end" fontSize={12} fontWeight={700} fill="#1a1d21">{payload.value}</text>
+        <text x={-8} y={11} textAnchor="end" fontSize={10} fill="#6b7280">{row?.description ?? ''}</text>
+      </g>
+    );
+  };
+
   return (
     <section className="page">
       <div className="analytics-head">
@@ -65,7 +78,7 @@ export default function RotationsPage() {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 28, top: 8, bottom: 8 }}>
             <XAxis type="number" tickFormatter={(v) => `${v}%`} />
-            <YAxis type="category" dataKey="etf" width={52} tickLine={false} />
+            <YAxis type="category" dataKey="etf" width={150} tick={renderEtfTick} tickLine={false} axisLine={false} />
             <ReferenceLine x={0} stroke="#b0b4bb" />
             <Tooltip
               formatter={(v: number) => [`${v.toFixed(2)}%`, 'change']}
@@ -112,13 +125,18 @@ export default function RotationsPage() {
               <thead>
                 <tr>
                   <th className="corr-corner"></th>
-                  {corr.symbols.map((s) => <th key={s} className="corr-colhead">{s}</th>)}
+                  {corr.symbols.map((s, i) => (
+                    <th key={s} className="corr-colhead" title={corr.descriptions[i]}>{s}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {corr.symbols.map((rowSym, i) => (
                   <tr key={rowSym}>
-                    <th className="corr-rowhead" title={corr.descriptions[i]}>{rowSym}</th>
+                    <th className="corr-rowhead">
+                      <span className="corr-rowsym">{rowSym}</span>
+                      <span className="corr-rowdesc">{corr.descriptions[i]}</span>
+                    </th>
                     {corr.symbols.map((colSym, j) => {
                       const v = corr.matrix[i][j];
                       return (
