@@ -132,10 +132,7 @@ export default function RotationsPage() {
                     <th className="corr-corner"></th>
                     {corr.symbols.map((s, i) => (
                       <th key={s} className="corr-colhead">
-                        <div className="corr-colhead-inner">
-                          <span className="corr-colsym">{s}</span>
-                          <span className="corr-coldesc">{corr.descriptions[i]}</span>
-                        </div>
+                        <span className="corr-colsym">{s}</span> <span className="corr-coldesc">{corr.descriptions[i]}</span>
                       </th>
                     ))}
                   </tr>
@@ -144,8 +141,7 @@ export default function RotationsPage() {
                   {corr.symbols.map((rowSym, i) => (
                     <tr key={rowSym}>
                       <th className="corr-rowhead">
-                        <span className="corr-rowsym">{rowSym}</span>
-                        <span className="corr-rowdesc">{corr.descriptions[i]}</span>
+                        <span className="corr-rowsym">{rowSym}</span> <span className="corr-rowdesc">{corr.descriptions[i]}</span>
                       </th>
                       {corr.symbols.map((colSym, j) => {
                         const v = corr.matrix[i][j];
@@ -153,13 +149,13 @@ export default function RotationsPage() {
                           <td key={colSym} className="corr-cell" style={{ background: corrColor(v) }}>
                             <a
                               className="corr-cell-link"
-                              style={{ color: corrText(v) }}
+                              style={{ color: i === j ? '#1a1d21' : corrText(v) }}
                               href={`/quotes?etfs=${encodeURIComponent(rowSym)},${encodeURIComponent(colSym)}&day=${todayIso}`}
                               target="_blank"
                               rel="noopener"
                               title={`${rowSym} × ${colSym}: ${fmtCorr(v)} — open in Quotes`}
                             >
-                              {i === j ? '' : fmtCorr(v)}
+                              {i === j ? '1.00' : fmtCorr(v)}
                             </a>
                           </td>
                         );

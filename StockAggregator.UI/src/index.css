@@ -130,6 +130,7 @@ body {
 .symbol { display: inline-block; }
 .symbol-etf { font-weight: 700; }
 .symbol-member { font-weight: 400; padding-left: 20px; }
+.member-name { font-weight: 400; font-size: 11px; margin-left: 8px; color: rgba(255, 255, 255, 0.8); }
 .etf-desc {
   margin-left: 8px;
   font-weight: 400;
@@ -322,15 +323,15 @@ body {
 .corr-grid { border-collapse: separate; border-spacing: 2px; font-size: 13px; font-variant-numeric: tabular-nums; }
 .corr-grid th { font-weight: 600; color: var(--text); padding: 2px 4px; }
 
-/* Column headers run vertically so the ETF descriptions fit on the top axis. */
-.corr-colhead { vertical-align: bottom; padding: 0 0 6px; }
-.corr-colhead-inner { writing-mode: vertical-rl; white-space: nowrap; line-height: 1; }
+/* Column headers read horizontally (wrap within a bounded width) so the ETF
+   descriptions sit on the top axis left-to-right. */
+.corr-colhead { vertical-align: bottom; text-align: center; padding: 0 4px 6px; width: 90px; white-space: normal; line-height: 1.2; }
 .corr-colsym { font-weight: 700; }
 .corr-coldesc { color: var(--muted); font-weight: 400; font-size: 12px; }
 
 .corr-rowhead { text-align: right; position: sticky; left: 0; background: var(--panel); white-space: nowrap; padding-right: 6px; }
 .corr-rowsym { font-weight: 700; }
-.corr-rowdesc { color: var(--muted); font-weight: 400; margin-left: 6px; }
+.corr-rowdesc { color: var(--muted); font-weight: 400; }
 .corr-corner { position: sticky; left: 0; background: var(--panel); }
 
 .corr-cell { width: 48px; height: 34px; padding: 0; border-radius: 3px; }

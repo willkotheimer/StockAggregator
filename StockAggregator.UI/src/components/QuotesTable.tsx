@@ -7,6 +7,7 @@ import {
   type ColumnDef,
 } from '@tanstack/react-table';
 import type { QuoteCell, SnapshotColumn, SymbolRow, WeekQuotesResponse } from '../types';
+import { SYMBOL_NAMES } from '../symbolNames';
 
 const columnHelper = createColumnHelper<SymbolRow>();
 
@@ -107,7 +108,13 @@ export default function QuotesTable({ data, caption, expanded: controlledExpande
             </span>
           );
         }
-        return <span className="symbol symbol-member">{info.getValue()}</span>;
+        const name = SYMBOL_NAMES[row.symbol];
+        return (
+          <span className="symbol symbol-member">
+            {info.getValue()}
+            {name && <span className="member-name">{name}</span>}
+          </span>
+        );
       },
     }) as ColumnDef<SymbolRow, unknown>;
 
