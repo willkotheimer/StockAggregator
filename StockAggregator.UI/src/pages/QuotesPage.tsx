@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Offcanvas } from 'bootstrap';
 import { useSearchParams } from 'react-router-dom';
 import { fetchAvailableDates, fetchDays, fetchEtfGroups } from '../api/client';
 import { useApi } from '../hooks/useApi';
@@ -32,8 +33,17 @@ export default function QuotesPage() {
   const [visibleEtfs, setVisibleEtfs] = useState<Set<string> | null>(null);
   // Symbols plotted on the comparison chart, in selection order.
   const [chartSymbols, setChartSymbols] = useState<string[]>([]);
-  const [drawerOpen, setDrawerOpen] = useState(true);
   const didInitDay = useRef(false);
+
+  // Bootstrap 5 offcanvas for the browse panel. No backdrop so the chart stays
+  // visible/live behind it while you pick stocks.
+  const offcanvasRef = useRef<HTMLDivElement>(null);
+  const offcanvas = useRef<Offcanvas | null>(null);
+  useEffect(() => {
+    if (!offcanvasRef.current) return;
+    offcanvas.current = Offcanvas.getOrCreateInstance(offcanvasRef.current, { backdrop: false, scroll: true });
+    return () => offcanvas.current?.dispose();
+  }, []);
 
   const availableSet = useMemo(() => new Set(available ?? []), [available]);
 
@@ -130,13 +140,15 @@ export default function QuotesPage() {
 
   return (
     <section className="page quotes-page">
-      <div className="quotes-shell">
-        <aside className={`quotes-drawer${drawerOpen ? '' : ' closed'}`}>
-          <div className="drawer-head">
-            <span className="drawer-title">Browse</span>
-            <button type="button" className="drawer-close" onClick={() => setDrawerOpen(false)} aria-label="Hide panel">✕</button>
-          </div>
+      <button type="button" className="drawer-open" onClick={() => offcanvas.current?.show()}>☰ Browse</button>
+      <StockChart symbols={chartSymbols} colorOf={colorOf} onRemove={toggleChart} />
 
+      <div className="offcanvas offcanvas-start browse-panel" tabIndex={-1} ref={offcanvasRef} aria-labelledby="browseLabel">
+        <div className="offcanvas-header">
+          <h5 className="offcanvas-title" id="browseLabel">Browse</h5>
+          <button type="button" className="drawer-close" onClick={() => offcanvas.current?.hide()} aria-label="Close">✕</button>
+        </div>
+        <div className="offcanvas-body">
           {datesLoading && <p>Loading calendar…</p>}
           {datesError && <p className="error">Error: {datesError}</p>}
           {available && (
@@ -193,13 +205,6 @@ export default function QuotesPage() {
               />
             ))}
           </div>
-        </aside>
-
-        <div className="quotes-main">
-          {!drawerOpen && (
-            <button type="button" className="drawer-open" onClick={() => setDrawerOpen(true)}>☰ Browse</button>
-          )}
-          <StockChart symbols={chartSymbols} colorOf={colorOf} onRemove={toggleChart} />
         </div>
       </div>
     </section>

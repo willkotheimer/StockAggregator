@@ -1,0 +1,10 @@
+// Pull in ONLY Bootstrap 5's offcanvas component (plus the deps it needs), not
+// the whole framework — so it doesn't restyle the rest of the app. The .offcanvas
+// visuals (background, width, colors) are themed in index.css using our own vars.
+@import "bootstrap/scss/functions";
+@import "bootstrap/scss/variables";
+@import "bootstrap/scss/variables-dark";
+@import "bootstrap/scss/maps";
+@import "bootstrap/scss/mixins";
+@import "bootstrap/scss/transitions";
+@import "bootstrap/scss/offcanvas";
