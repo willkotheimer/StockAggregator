@@ -165,8 +165,9 @@ body {
   border-radius: 4px;
   padding: 1px 5px;
 }
-.chg.up { background: var(--up); }
-.chg.down { background: var(--down); }
+/* Two classes so the white beats the generic .up/.down color rule below. */
+.chg.up { background: var(--up); color: #ffffff; }
+.chg.down { background: var(--down); color: #ffffff; }
 .cell-empty { color: var(--muted); }
 
 .error { color: var(--down); }
