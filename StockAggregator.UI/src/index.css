@@ -313,6 +313,10 @@ body {
 .rebound-table th:first-child, .rebound-table td:first-child { text-align: left; }
 .rebound-table td, .rebound-table th { position: static; }
 
+.pill-caption { align-self: center; font-size: 12px; color: var(--muted); }
+.range-etf-row td { background: #eef4ec; font-weight: 600; }
+.range-etf-row:hover td { background: #e6efe3; }
+
 /* Quotes tab: calendar + side-by-side day tables */
 .calendar {
   display: inline-block;

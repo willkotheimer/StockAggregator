@@ -10,11 +10,13 @@ public sealed class AnalyticsController : ControllerBase
 {
     private readonly IAnalyticsQueryService _service;
     private readonly IReboundQueryService _rebound;
+    private readonly IRangeQueryService _ranges;
 
-    public AnalyticsController(IAnalyticsQueryService service, IReboundQueryService rebound)
+    public AnalyticsController(IAnalyticsQueryService service, IReboundQueryService rebound, IRangeQueryService ranges)
     {
         _service = service;
         _rebound = rebound;
+        _ranges = ranges;
     }
 
     /// <summary>ETFs rising while most tracked members are flat/negative (defaults to the latest day).</summary>
@@ -59,5 +61,20 @@ public sealed class AnalyticsController : ControllerBase
         threshold = Math.Clamp(threshold, 1m, 90m);
 
         return Ok(await _rebound.GetReboundAsync(symbol, reboundMode, threshold, cancellationToken));
+    }
+
+    /// <summary>
+    /// Range / volatility profile for an ETF and its members — typical daily/weekly
+    /// range, up-day stats, and typical gain before a pullback (%). The profit-taking scanner.
+    /// </summary>
+    [HttpGet("ranges/{etf}")]
+    public async Task<ActionResult<RangeResponse>> GetRanges(
+        string etf,
+        [FromQuery] decimal pullback = 5m,
+        CancellationToken cancellationToken = default)
+    {
+        pullback = Math.Clamp(pullback, 1m, 50m);
+        var result = await _ranges.GetRangesAsync(etf, pullback, cancellationToken);
+        return result is null ? NotFound($"Unknown ETF '{etf}'.") : Ok(result);
     }
 }

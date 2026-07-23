@@ -1,6 +1,7 @@
 import type {
   EtfGroup,
   HiddenSignalResponse,
+  RangeResponse,
   ReboundResponse,
   RotationResponse,
   WeekQuotesResponse,
@@ -48,3 +49,6 @@ export const fetchRebound = (symbol: string, mode: 'trough' | 'surge', threshold
   getJson<ReboundResponse>(
     `/api/analytics/rebound/${encodeURIComponent(symbol)}?mode=${mode}&threshold=${threshold}`,
   );
+
+export const fetchRanges = (etf: string, pullback = 5) =>
+  getJson<RangeResponse>(`/api/analytics/ranges/${encodeURIComponent(etf)}?pullback=${pullback}`);

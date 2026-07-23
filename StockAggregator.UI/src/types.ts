@@ -111,3 +111,24 @@ export interface ReboundResponse {
   baseRate: ReboundBaseRate | null;
   episodes: ReboundEpisode[];
 }
+
+export interface RangeRow {
+  symbol: string;
+  isEtf: boolean;
+  barCount: number;
+  historyStart: string | null;
+  medianDailyRangePct: number | null;
+  medianWeeklyRangePct: number | null;
+  upDayPct: number | null;
+  medianUpDayPct: number | null;
+  medianDownDayPct: number | null;
+  typicalGainBeforePullbackPct: number | null;
+  pullbackEpisodeCount: number;
+}
+
+export interface RangeResponse {
+  etf: string;
+  description: string;
+  pullbackPct: number;
+  rows: RangeRow[];
+}
