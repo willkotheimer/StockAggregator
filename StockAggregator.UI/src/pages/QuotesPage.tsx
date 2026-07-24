@@ -193,7 +193,7 @@ export default function QuotesPage() {
     <section className="page quotes-page">
       <div className={`quotes-main${panelOpen ? ' pushed' : ''}`}>
         {!panelOpen && (
-          <button type="button" className="drawer-open" onClick={() => offcanvas.current?.show()}>☰ Browse</button>
+          <button type="button" className="drawer-open" onClick={() => offcanvas.current?.show()}>☰ Browse stocks to add to your Chart</button>
         )}
         <StockChart
           symbols={chartSymbols}

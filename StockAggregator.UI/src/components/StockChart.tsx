@@ -146,11 +146,17 @@ export default function StockChart({
           )}
         </aside>
 
-        <div className="chart-plot" onClick={onPlotClick} title="Click to toggle the browse panel">
-          {symbols.length === 0 ? (
-            <p className="subtle chart-hint">Open the panel and click an ETF or stock to plot it. Click the chart to toggle the panel.</p>
-          ) : error ? (
+        <div className="chart-plot" onClick={onPlotClick} title="Click to open the browse panel">
+          {error ? (
             <p className="error">Error: {error}</p>
+          ) : symbols.length === 0 ? (
+            <div className="chart-empty" style={{ height: 440 }}>
+              <div className="chart-empty-inner">
+                <span className="chart-empty-icon" aria-hidden="true">📈</span>
+                <p className="chart-empty-title">Nothing charted yet</p>
+                <p className="subtle" style={{ margin: 0 }}>Click here to browse ETFs and stocks to compare.</p>
+              </div>
+            </div>
           ) : (
             <div style={{ height: 440, opacity: loading ? 0.6 : 1 }}>
               <ResponsiveContainer width="100%" height="100%">

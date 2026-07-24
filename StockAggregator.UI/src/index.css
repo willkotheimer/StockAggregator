@@ -396,6 +396,14 @@ body {
 .chart-row { display: flex; gap: 14px; align-items: stretch; }
 .chart-legend { flex: 0 0 170px; max-height: 490px; overflow: auto; font-size: 13px; border-right: 1px solid var(--border); padding-right: 10px; }
 .chart-plot { flex: 1 1 0; min-width: 0; cursor: pointer; }
+.chart-empty {
+  display: flex; align-items: center; justify-content: center;
+  border: 1px dashed var(--border); border-radius: 10px;
+  background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(127, 127, 127, 0.04) 10px, rgba(127, 127, 127, 0.04) 20px);
+}
+.chart-empty-inner { text-align: center; padding: 20px; }
+.chart-empty-icon { font-size: 34px; opacity: 0.55; display: block; margin-bottom: 8px; }
+.chart-empty-title { margin: 0 0 4px; font-weight: 600; color: var(--muted); }
 .cl-group { margin-bottom: 8px; }
 .cl-etf { display: flex; align-items: center; gap: 6px; font-weight: 700; }
 .cl-actions { margin-left: auto; display: inline-flex; gap: 4px; }
