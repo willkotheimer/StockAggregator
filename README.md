@@ -22,6 +22,15 @@ one-off backfill pulls ~2 years of daily OHLC so the historical screens have som
 The dashboard reads that data through a read-only API. Every page is a different lens on the
 same underlying quotes.
 
+**TL;DR — what each page is worth to a trader:**
+
+- **Quotes** — compare any mix of ETFs and stocks on one normalized price chart to see who's actually leading, plus the day-by-day snapshot grid.
+- **Rotations & Correlations** — spot which sectors are leading vs. lagging *today*, and which ones move together (redundant) vs. opposite (natural hedges) for sizing and diversification.
+- **Signals** — catch ETFs rising on just a few names while most members lag: thin, easily-reversed breadth you'd otherwise miss.
+- **Rebound** — after an *X%* drawdown, how long this name has *historically* taken to reclaim its prior peak — base rates to sanity-check "buy the dip," not a forecast.
+- **Ranges** — each name's typical daily/weekly move and usual run-up before a pullback, so profit targets and stops are calibrated to how it actually trades.
+- **Crawlers** — rank names by how *steadily* they climb (trend R²), surfacing low-drawdown, low-drama uptrends instead of choppy round-trips.
+
 ---
 
 ## The dashboard
