@@ -25,6 +25,11 @@ builder.Services.AddScoped<ICorrelationQueryService, CorrelationQueryService>();
 builder.Services.AddScoped<ICrawlerQueryService, CrawlerQueryService>();
 builder.Services.AddScoped<IPriceHistoryQueryService, PriceHistoryQueryService>();
 
+// The crawler screener scans every symbol's full history (~150s), so it's memoized
+// per window and refreshed nightly instead of computed on each request.
+builder.Services.AddSingleton<CrawlerCache>();
+builder.Services.AddHostedService<CrawlerCacheRefresher>();
+
 // Allow the React dev/published origin(s) from config.
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
     ?? new[] { "http://localhost:5173" };

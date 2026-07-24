@@ -12,7 +12,7 @@ public sealed class AnalyticsController : ControllerBase
     private readonly IReboundQueryService _rebound;
     private readonly IRangeQueryService _ranges;
     private readonly ICorrelationQueryService _correlations;
-    private readonly ICrawlerQueryService _crawlers;
+    private readonly CrawlerCache _crawlers;
     private readonly IPriceHistoryQueryService _history;
 
     public AnalyticsController(
@@ -20,7 +20,7 @@ public sealed class AnalyticsController : ControllerBase
         IReboundQueryService rebound,
         IRangeQueryService ranges,
         ICorrelationQueryService correlations,
-        ICrawlerQueryService crawlers,
+        CrawlerCache crawlers,
         IPriceHistoryQueryService history)
     {
         _service = service;
@@ -113,7 +113,9 @@ public sealed class AnalyticsController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         window = Math.Clamp(window, 20, 250);
-        return Ok(await _crawlers.GetCrawlersAsync(window, cancellationToken));
+        // Served from the in-memory cache (nightly-refreshed for the standard windows);
+        // a non-standard or not-yet-warmed window computes once, then is cached.
+        return Ok(await _crawlers.GetAsync(window, cancellationToken));
     }
 
     /// <summary>Daily close history for the comparison chart (comma-separated symbols).</summary>
