@@ -39,15 +39,13 @@ export default function RotationsPage() {
 
   const [window, setWindow] = useState(60);
   const [corr, setCorr] = useState<CorrelationResponse | null>(null);
-  const [corrErr, setCorrErr] = useState<string | null>(null);
   const [drill, setDrill] = useState<{ a: string; b: string } | null>(null);
 
   useEffect(() => {
     let live = true;
-    setCorrErr(null);
     fetchCorrelations(window)
       .then((d) => { if (live) setCorr(d); })
-      .catch((e: unknown) => { if (live) setCorrErr(e instanceof Error ? e.message : String(e)); });
+      .catch(() => {}); // correlations stay hidden until they load
     return () => { live = false; };
   }, [window]);
 
@@ -70,58 +68,60 @@ export default function RotationsPage() {
 
   return (
     <section className="page rotations-page">
-      <div className="analytics-head">
-        <h2>Rotations</h2>
-        <span className="asof">computed as of {data.asOfDate}</span>
-      </div>
-      <p className="subtle">Sector ETFs ranked by daily change — leaders on top, laggards below.</p>
+      <div className="rot-corr-layout">
+        <div className="rot-col">
+          <div className="analytics-head">
+            <h2>Rotations</h2>
+            <span className="asof">computed as of {data.asOfDate}</span>
+          </div>
+          <p className="subtle">Sector ETFs ranked by daily change — leaders on top, laggards below.</p>
 
-      <div className="chart-wrap" style={{ height: chartData.length * 34 + 48 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 28, top: 8, bottom: 8 }}>
-            <XAxis type="number" tickFormatter={(v) => `${v}%`} />
-            <YAxis type="category" dataKey="etf" width={150} tick={renderEtfTick} tickLine={false} axisLine={false} />
-            <ReferenceLine x={0} stroke="#b0b4bb" />
-            <Tooltip
-              formatter={(v: number) => [`${v.toFixed(2)}%`, 'change']}
-              labelFormatter={(etf) => {
-                const row = chartData.find((r) => r.etf === etf);
-                return row ? `${row.etf} — ${row.description}` : String(etf);
-              }}
-            />
-            <Bar dataKey="changePct" radius={[0, 3, 3, 0]} isAnimationActive={false}>
-              {chartData.map((d) => (
-                <Cell key={d.etf} fill={d.changePct >= 0 ? UP : DOWN} />
+          <div className="chart-wrap" style={{ height: chartData.length * 34 + 48 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 28, top: 8, bottom: 8 }}>
+                <XAxis type="number" tickFormatter={(v) => `${v}%`} />
+                <YAxis type="category" dataKey="etf" width={150} tick={renderEtfTick} tickLine={false} axisLine={false} />
+                <ReferenceLine x={0} stroke="#b0b4bb" />
+                <Tooltip
+                  formatter={(v: number) => [`${v.toFixed(2)}%`, 'change']}
+                  labelFormatter={(etf) => {
+                    const row = chartData.find((r) => r.etf === etf);
+                    return row ? `${row.etf} — ${row.description}` : String(etf);
+                  }}
+                />
+                <Bar dataKey="changePct" radius={[0, 3, 3, 0]} isAnimationActive={false}>
+                  {chartData.map((d) => (
+                    <Cell key={d.etf} fill={d.changePct >= 0 ? UP : DOWN} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Correlations — hidden entirely until loaded */}
+        {corr && corr.symbols.length > 0 && (
+          <div className="corr-col">
+            <div className="analytics-head">
+              <h2>Correlations</h2>
+              <span className="asof">last {corr.windowDays} trading days · as of {corr.asOfDate}</span>
+            </div>
+            <p className="subtle">
+              How the sector ETFs&apos; daily moves relate over the window. <strong style={{ color: DOWN }}>Red</strong> = they
+              move together (redundant); <strong style={{ color: '#2a78d6' }}>blue</strong> = they move oppositely (natural
+              hedges). Correlation, not causation.
+            </p>
+
+            <div className="pill-row">
+              <span className="pill-caption">window:</span>
+              {WINDOWS.map((w) => (
+                <button key={w} className={`pill pill-mode${w === window ? ' active' : ''}`} onClick={() => setWindow(w)}>
+                  {w}d
+                </button>
               ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+            </div>
 
-      {/* Correlations — the same sector-rotation lens, over a trailing window */}
-      <div className="analytics-head" style={{ marginTop: 28 }}>
-        <h2>Correlations</h2>
-        {corr?.asOfDate && <span className="asof">last {corr.windowDays} trading days · as of {corr.asOfDate}</span>}
-      </div>
-      <p className="subtle">
-        How the sector ETFs&apos; daily moves relate over the window. <strong style={{ color: DOWN }}>Red</strong> = they
-        move together (redundant); <strong style={{ color: '#2a78d6' }}>blue</strong> = they move oppositely (natural
-        hedges). Correlation, not causation.
-      </p>
-
-      <div className="pill-row">
-        <span className="pill-caption">window:</span>
-        {WINDOWS.map((w) => (
-          <button key={w} className={`pill pill-mode${w === window ? ' active' : ''}`} onClick={() => setWindow(w)}>
-            {w}d
-          </button>
-        ))}
-      </div>
-
-      {corrErr && <p className="error">Error: {corrErr}</p>}
-
-      {corr && corr.symbols.length > 0 && (
-        <div className="corr-layout">
+            <div className="corr-layout">
           <div className="corr-heat">
             <div className="table-wrap" style={{ display: 'inline-block', maxWidth: '100%' }}>
               <table className="corr-grid">
@@ -189,9 +189,11 @@ export default function RotationsPage() {
                 </div>
               ))}
             </div>
+            </div>
           </div>
         </div>
-      )}
+        )}
+      </div>
 
       {drill && (
         <QuotesDrilldownModal
