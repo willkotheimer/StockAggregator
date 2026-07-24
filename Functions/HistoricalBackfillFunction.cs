@@ -30,7 +30,7 @@ public class HistoricalBackfillFunction
 
     [Function("HistoricalBackfill_Run")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "backfill")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "backfill")] HttpRequestData req,
         CancellationToken cancellationToken)
     {
         var query = ParseQuery(req.Url.Query);

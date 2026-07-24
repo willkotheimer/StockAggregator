@@ -19,7 +19,7 @@ public class ManualSnapshotFunction
 
     [Function("ManualSnapshot")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "manual-snapshot")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = "manual-snapshot")] HttpRequestData req,
         FunctionContext executionContext,
         CancellationToken cancellationToken)
     {

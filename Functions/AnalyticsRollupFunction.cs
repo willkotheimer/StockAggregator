@@ -33,7 +33,7 @@ public class AnalyticsRollupFunction
     // On-demand recompute/backfill over a wider window.
     [Function("AnalyticsRollup_Run")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "analytics/rollup")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "analytics/rollup")] HttpRequestData req,
         CancellationToken cancellationToken)
     {
         var rows = await _rollup.RunDailyRollupAsync(lookbackDays: 30, cancellationToken);
