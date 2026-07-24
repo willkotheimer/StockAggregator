@@ -30,6 +30,19 @@ builder.Services.AddScoped<IPriceHistoryQueryService, PriceHistoryQueryService>(
 builder.Services.AddSingleton<CrawlerCache>();
 builder.Services.AddHostedService<CrawlerCacheRefresher>();
 
+// In-memory output cache for the read API. The data changes only a few times a day
+// (snapshots + the nightly rollup), so caching responses keeps repeat/bot traffic off
+// the serverless SQL database — letting it auto-pause — without any external cache.
+// Route params (e.g. rebound/{symbol}) are already part of the path key; this varies
+// by every query key the API reads so per-window/per-day/etc. results stay distinct.
+// Keep this list in sync when adding a query parameter to a cached GET.
+builder.Services.AddOutputCache(options =>
+{
+    options.AddPolicy("api", policy => policy
+        .Expire(TimeSpan.FromMinutes(10))
+        .SetVaryByQuery("days", "dates", "date", "window", "symbols", "mode", "threshold", "pullback"));
+});
+
 // Allow the React dev/published origin(s) from config.
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
     ?? new[] { "http://localhost:5173" };
@@ -48,6 +61,8 @@ app.UseStaticFiles();
 
 app.UseCors(CorsPolicy);
 app.UseMiddleware<ApiKeyMiddleware>();
+// After the API-key gate so only authorized requests are served from / stored in the cache.
+app.UseOutputCache();
 
 app.MapControllers();
 app.MapFallbackToFile("index.html");

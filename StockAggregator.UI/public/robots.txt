@@ -1,0 +1,7 @@
+# The dashboard is a public portfolio site, but the /api/* endpoints hit a
+# serverless SQL database that auto-pauses to save cost. Crawlers that render
+# JavaScript (Googlebot, Bingbot) would otherwise execute the app and fire every
+# API call, waking the database around the clock. Disallow the API so the static
+# site can still be indexed while the data endpoints are left alone.
+User-agent: *
+Disallow: /api/

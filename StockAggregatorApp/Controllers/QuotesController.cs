@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 using StockAggregatorApp.Models;
 using StockAggregatorApp.Services;
 
@@ -6,6 +7,7 @@ namespace StockAggregatorApp.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[OutputCache(PolicyName = "api")]
 public sealed class QuotesController : ControllerBase
 {
     private readonly IQuoteQueryService _service;
