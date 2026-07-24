@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Bar, BarChart, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { fetchCorrelations, fetchRotations } from '../api/client';
-import { useApi } from '../hooks/useApi';
-import type { CorrelationResponse } from '../types';
 import QuotesDrilldownModal from '../components/QuotesDrilldownModal';
+import { fmtUpdated } from '../components/OverviewHero';
 
 const UP = '#157f3b';
 const DOWN = '#c62828';
@@ -35,22 +35,17 @@ function fmtCorr(v: number | null): string {
 }
 
 export default function RotationsPage() {
-  const { data, loading, error } = useApi(fetchRotations);
+  const rotationsQuery = useQuery({ queryKey: ['rotations'], queryFn: fetchRotations });
+  const data = rotationsQuery.data;
 
   const [window, setWindow] = useState(60);
-  const [corr, setCorr] = useState<CorrelationResponse | null>(null);
+  // Cached + persisted; shows the last result instantly, refetches in the background.
+  const corrQuery = useQuery({ queryKey: ['correlations', window], queryFn: () => fetchCorrelations(window) });
+  const corr = corrQuery.data;
   const [drill, setDrill] = useState<{ a: string; b: string } | null>(null);
 
-  useEffect(() => {
-    let live = true;
-    fetchCorrelations(window)
-      .then((d) => { if (live) setCorr(d); })
-      .catch(() => {}); // correlations stay hidden until they load
-    return () => { live = false; };
-  }, [window]);
-
-  if (loading) return <p>Loading…</p>;
-  if (error) return <p className="error">Error: {error}</p>;
+  if (rotationsQuery.isLoading) return <p>Loading…</p>;
+  if (rotationsQuery.isError) return <p className="error">Error loading rotations.</p>;
   if (!data || data.rows.length === 0) return <p>No analytics computed yet — check back after the next nightly rollup.</p>;
 
   const chartData = data.rows.map((r) => ({ etf: r.etf, description: r.description, changePct: r.changePct ?? 0 }));
@@ -72,7 +67,7 @@ export default function RotationsPage() {
         <div className="rot-col">
           <div className="analytics-head">
             <h2>Rotations</h2>
-            <span className="asof">computed as of {data.asOfDate}</span>
+            <span className="asof">as of {data.asOfDate} · updated {fmtUpdated(rotationsQuery.dataUpdatedAt)}</span>
           </div>
           <p className="subtle">Sector ETFs ranked by daily change — leaders on top, laggards below.</p>
 
@@ -104,7 +99,9 @@ export default function RotationsPage() {
           <div className="corr-col">
             <div className="analytics-head">
               <h2>Correlations</h2>
-              <span className="asof">last {corr.windowDays} trading days · as of {corr.asOfDate}</span>
+              <span className="asof">
+                {corr.windowDays}d · as of {corr.asOfDate} · updated {fmtUpdated(corrQuery.dataUpdatedAt)}{corrQuery.isFetching ? ' · refreshing…' : ''}
+              </span>
             </div>
             <p className="subtle">
               How the sector ETFs&apos; daily moves relate over the window. <strong style={{ color: DOWN }}>Red</strong> = they

@@ -11,6 +11,15 @@ function pct(v: number | null | undefined, digits = 2): string {
   return `${v >= 0 ? '+' : ''}${v.toFixed(digits)}%`;
 }
 
+export function fmtUpdated(ms: number): string {
+  if (!ms || !Number.isFinite(ms)) return '';
+  const d = new Date(ms);
+  const sameDay = d.toDateString() === new Date().toDateString();
+  return sameDay
+    ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
 /// A full-width "at a glance" hero shown on every page. Stays hidden until all
 /// four analytics have loaded (React Query caches them so it loads once), so the
 /// user never sees a half-populated box.
@@ -28,6 +37,8 @@ export default function OverviewHero() {
 
   const [rotR, sigR, corrR, crawlR] = results;
   const allReady = results.every((r) => r.isSuccess);
+  const lastUpdated = Math.min(...results.map((r) => r.dataUpdatedAt || Infinity));
+  const revalidating = results.some((r) => r.isFetching);
 
   const view = useMemo(() => {
     if (!rotR.data || !sigR.data || !corrR.data || !crawlR.data) return null;
@@ -53,6 +64,9 @@ export default function OverviewHero() {
       <div className="overview-hero-head">
         <span className="overview-hero-title">At a glance</span>
         {view.asOf && <span className="ov-asof">as of {view.asOf}</span>}
+        {lastUpdated !== Infinity && (
+          <span className="ov-asof">· updated {fmtUpdated(lastUpdated)}{revalidating ? ' · refreshing…' : ''}</span>
+        )}
       </div>
       <div className="overview-grid">
         <div className="overview-card">
