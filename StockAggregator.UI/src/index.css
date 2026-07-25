@@ -52,9 +52,22 @@ body {
 .ov-big { font-size: 24px; font-weight: 800; line-height: 1.1; }
 .ov-loading { color: var(--muted); margin: 4px 0; }
 
-.tabs { display: flex; gap: 4px; }
+/* Horizontal nav. When the tabs overflow (mobile), let the user swipe/drag
+   left-right to reach them; keep it a single row and hide the scrollbar. */
+.tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* legacy Edge */
+}
+.tabs::-webkit-scrollbar { display: none; }  /* Chrome / Safari */
 
 .tab {
+  flex: 0 0 auto;
+  white-space: nowrap;
   padding: 8px 16px;
   text-decoration: none;
   color: var(--muted);
@@ -373,7 +386,14 @@ body {
   display: inline-block; width: 180px; height: 12px; border-radius: 6px;
   background: linear-gradient(to right, #2a78d6, #f0efec, #d64545);
 }
-.corr-pairs { display: flex; flex-direction: column; gap: 18px; }
+/* Opposing / aligned pair lists: side by side and left-aligned on desktop,
+   stacked full-width on mobile. */
+.corr-pairs { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 18px 48px; }
+.corr-pair-col { flex: 0 1 320px; min-width: 0; }
+@media (max-width: 640px) {
+  .corr-pairs { flex-direction: column; flex-wrap: nowrap; gap: 18px; }
+  .corr-pair-col { flex: 1 1 auto; }
+}
 .corr-pair-col h3 { margin: 0 0 6px; font-size: 15px; }
 .corr-pair-row {
   display: flex; justify-content: space-between; gap: 18px;
