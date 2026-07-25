@@ -386,14 +386,7 @@ body {
   display: inline-block; width: 180px; height: 12px; border-radius: 6px;
   background: linear-gradient(to right, #2a78d6, #f0efec, #d64545);
 }
-/* Opposing / aligned pair lists: side by side and left-aligned on desktop,
-   stacked full-width on mobile. */
-.corr-pairs { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 18px 48px; }
-.corr-pair-col { flex: 0 1 320px; min-width: 0; }
-@media (max-width: 640px) {
-  .corr-pairs { flex-direction: column; flex-wrap: nowrap; gap: 18px; }
-  .corr-pair-col { flex: 1 1 auto; }
-}
+.corr-pairs { display: flex; flex-direction: column; gap: 18px; }
 .corr-pair-col h3 { margin: 0 0 6px; font-size: 15px; }
 .corr-pair-row {
   display: flex; justify-content: space-between; gap: 18px;
