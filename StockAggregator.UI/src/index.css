@@ -387,6 +387,8 @@ body {
   background: linear-gradient(to right, #2a78d6, #f0efec, #d64545);
 }
 .corr-pairs { display: flex; flex-direction: column; gap: 18px; }
+/* When shown under the Rotations bar chart (left column), give it breathing room. */
+.rot-pairs { margin-top: 22px; }
 .corr-pair-col h3 { margin: 0 0 6px; font-size: 15px; }
 .corr-pair-row {
   display: flex; justify-content: space-between; gap: 18px;

@@ -92,6 +92,29 @@ export default function RotationsPage() {
               </BarChart>
             </ResponsiveContainer>
           </div>
+
+          {corr && corr.symbols.length > 0 && (
+            <div className="corr-pairs rot-pairs">
+              <div className="corr-pair-col">
+                <h3>Most opposing <span className="muted">(hedges)</span></h3>
+                {corr.mostOpposing.map((p) => (
+                  <div key={`${p.a}-${p.b}`} className="corr-pair-row">
+                    <span>{p.a} ↔ {p.b}</span>
+                    <span className="corr-pair-val" style={{ color: '#2a78d6' }}>{fmtCorr(p.corr)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="corr-pair-col">
+                <h3>Most aligned <span className="muted">(redundant)</span></h3>
+                {corr.mostAligned.map((p) => (
+                  <div key={`${p.a}-${p.b}`} className="corr-pair-row">
+                    <span>{p.a} ↔ {p.b}</span>
+                    <span className="corr-pair-val" style={{ color: DOWN }}>{fmtCorr(p.corr)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Correlations — hidden entirely until loaded */}
@@ -166,27 +189,6 @@ export default function RotationsPage() {
               <span>+1 together</span>
             </div>
           </div>
-
-          <div className="corr-pairs">
-            <div className="corr-pair-col">
-              <h3>Most opposing <span className="muted">(hedges)</span></h3>
-              {corr.mostOpposing.map((p) => (
-                <div key={`${p.a}-${p.b}`} className="corr-pair-row">
-                  <span>{p.a} ↔ {p.b}</span>
-                  <span className="corr-pair-val" style={{ color: '#2a78d6' }}>{fmtCorr(p.corr)}</span>
-                </div>
-              ))}
-            </div>
-            <div className="corr-pair-col">
-              <h3>Most aligned <span className="muted">(redundant)</span></h3>
-              {corr.mostAligned.map((p) => (
-                <div key={`${p.a}-${p.b}`} className="corr-pair-row">
-                  <span>{p.a} ↔ {p.b}</span>
-                  <span className="corr-pair-val" style={{ color: DOWN }}>{fmtCorr(p.corr)}</span>
-                </div>
-              ))}
-            </div>
-            </div>
           </div>
         </div>
         )}
