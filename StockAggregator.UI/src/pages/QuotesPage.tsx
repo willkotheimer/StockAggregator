@@ -241,7 +241,12 @@ export default function QuotesPage() {
         />
       </div>
 
-      <div className="offcanvas offcanvas-start browse-panel" tabIndex={-1} ref={offcanvasRef} aria-labelledby="browseLabel">
+      <div
+        className={`offcanvas offcanvas-start browse-panel${mode === 'range' ? ' range-wide' : ''}`}
+        tabIndex={-1}
+        ref={offcanvasRef}
+        aria-labelledby="browseLabel"
+      >
         <div className="offcanvas-header">
           <h5 className="offcanvas-title" id="browseLabel">Browse</h5>
           <button type="button" className="drawer-close" onClick={() => offcanvas.current?.hide()} aria-label="Close">✕</button>

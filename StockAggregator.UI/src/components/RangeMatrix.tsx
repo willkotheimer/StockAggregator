@@ -136,6 +136,9 @@ export default function RangeMatrix({
           {data.provisionalFrom} the price is the last snapshot of the session (14:30 CT), not the closing print.
         </p>
       )}
+      {/* Only the grid scrolls — the caption and the provisional note sit outside it,
+          so they stay put instead of sliding away when the date axis is scrolled. */}
+      <div className="range-matrix-scroll">
       <table className="quotes-table range-matrix">
         <thead>
           <tr>
@@ -214,6 +217,7 @@ export default function RangeMatrix({
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
