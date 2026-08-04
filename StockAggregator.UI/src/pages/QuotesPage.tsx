@@ -241,8 +241,12 @@ export default function QuotesPage() {
         />
       </div>
 
+      {/* Width varies by mode via a data attribute, not a class: Bootstrap toggles
+          `show` on this element imperatively, and a React-controlled className would
+          overwrite the whole class attribute and close the panel out from under it. */}
       <div
-        className={`offcanvas offcanvas-start browse-panel${mode === 'range' ? ' range-wide' : ''}`}
+        className="offcanvas offcanvas-start browse-panel"
+        data-mode={mode}
         tabIndex={-1}
         ref={offcanvasRef}
         aria-labelledby="browseLabel"

@@ -591,6 +591,18 @@ body {
 .range-matrix td.rm-trend { white-space: nowrap; }
 .range-matrix td.rm-num { text-align: right; font-size: 12px; color: var(--muted); }
 
+/* The verdict is the reason the table exists, so it pins to the right the way the
+   symbol pins to the left — scrolling the date axis can never hide it. Widths are
+   fixed because the right offsets are computed from them. */
+.range-matrix th.rm-trend, .range-matrix td.rm-trend {
+  position: sticky; z-index: 2; background: var(--panel);
+}
+.range-matrix thead th.rm-trend { z-index: 4; background: var(--header); }
+.range-matrix .row-etf td.rm-trend { background: #eef4ec; }
+.range-matrix .rm-trend-verdict { right: 152px; width: 150px; min-width: 150px; border-left: 1px solid var(--border); }
+.range-matrix .rm-trend-band { right: 76px; width: 76px; min-width: 76px; }
+.range-matrix .rm-trend-pos { right: 0; width: 76px; min-width: 76px; }
+
 .rm-provisional { margin: 6px 10px; font-size: 11px; }
 .range-matrix th.rm-provisional-col { font-style: italic; }
 .rm-prov-mark { color: var(--header-accent); margin-left: 2px; }
@@ -609,8 +621,11 @@ body {
 .browse-panel.offcanvas-start { --bs-offcanvas-width: 50vw; }
 /* Range mode renders a wide symbol x date grid; half the viewport clips it mid-column,
    so the panel widens for that mode only. Days mode's narrow tables keep 50vw. */
-.browse-panel.range-wide.offcanvas-start { --bs-offcanvas-width: 92vw; }
-@media (max-width: 820px) { .browse-panel.offcanvas-start { --bs-offcanvas-width: 100vw; } }
+.browse-panel[data-mode="range"].offcanvas-start { --bs-offcanvas-width: 92vw; }
+@media (max-width: 820px) {
+  .browse-panel.offcanvas-start,
+  .browse-panel[data-mode="range"].offcanvas-start { --bs-offcanvas-width: 100vw; }
+}
 .browse-panel .offcanvas-header { border-bottom: 1px solid var(--border); }
 .browse-panel .offcanvas-title { font-size: 15px; font-weight: 700; }
 /* Transparent backdrop: keeps the chart visible while still closing on outside click. */
@@ -687,7 +702,8 @@ body {
 :root[data-theme="dark"] .range-etf-row:hover td { background: #1e4436; }
 :root[data-theme="dark"] .cal-mode { background: var(--panel); }
 :root[data-theme="dark"] .cal-cell.sel:not(.cal-edge) { background: #24365c; color: var(--text); }
-:root[data-theme="dark"] .range-matrix .row-etf td.rm-sym-col { background: #17352b; }
+:root[data-theme="dark"] .range-matrix .row-etf td.rm-sym-col,
+:root[data-theme="dark"] .range-matrix .row-etf td.rm-trend { background: #17352b; }
 .table-caption {
   padding: 6px 10px;
   font-weight: 600;

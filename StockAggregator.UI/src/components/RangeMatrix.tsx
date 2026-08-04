@@ -153,13 +153,13 @@ export default function RangeMatrix({
                 {provisionalIndex >= 0 && i >= provisionalIndex && <span className="rm-prov-mark">*</span>}
               </th>
             ))}
-            <th className="rm-trend rm-sortable" onClick={() => toggleSort('net')} title="Net move, first to last close. Click to sort.">
+            <th className="rm-trend rm-trend-verdict rm-sortable" onClick={() => toggleSort('net')} title="Net move, first to last close. Click to sort.">
               Trend{sortArrow('net')}
             </th>
-            <th className="rm-trend rm-sortable" onClick={() => toggleSort('band')} title="Low-to-high spread over the range. Click to sort.">
+            <th className="rm-trend rm-trend-band rm-sortable" onClick={() => toggleSort('band')} title="Low-to-high spread over the range. Click to sort.">
               Band{sortArrow('band')}
             </th>
-            <th className="rm-trend rm-sortable" onClick={() => toggleSort('position')} title="Where the last close sits in the band. Click to sort.">
+            <th className="rm-trend rm-trend-pos rm-sortable" onClick={() => toggleSort('position')} title="Where the last close sits in the band. Click to sort.">
               In band{sortArrow('position')}
             </th>
           </tr>
@@ -209,9 +209,9 @@ export default function RangeMatrix({
                     <CloseCell close={row.closes[i] ?? null} change={row.changes[i] ?? null} />
                   </td>
                 ))}
-                <td className="rm-trend"><TrendCell trend={row.trend} /></td>
-                <td className="rm-trend rm-num">{row.trend.bandPct == null ? '—' : `${row.trend.bandPct.toFixed(2)}%`}</td>
-                <td className="rm-trend rm-num">{row.trend.positionInBand == null ? '—' : `${row.trend.positionInBand.toFixed(0)}%`}</td>
+                <td className="rm-trend rm-trend-verdict"><TrendCell trend={row.trend} /></td>
+                <td className="rm-trend rm-trend-band rm-num">{row.trend.bandPct == null ? '—' : `${row.trend.bandPct.toFixed(2)}%`}</td>
+                <td className="rm-trend rm-trend-pos rm-num">{row.trend.positionInBand == null ? '—' : `${row.trend.positionInBand.toFixed(0)}%`}</td>
               </tr>
             );
           })}
