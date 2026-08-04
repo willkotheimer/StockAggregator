@@ -51,7 +51,11 @@ jobs:
           app-name: ${{ secrets.FUNCTION_APP_NAME }}
           package: ./publish
 
-      - name: Run deployment smoke test
+      # The deploy restarts the app, and on a consumption plan it answers 503 until the
+      # host is back. Without this the smoke test raced the restart and failed a deploy
+      # that was actually fine. Waiting here keeps the test itself a real assertion:
+      # if the app never comes back, the loop expires and the step still fails.
+      - name: Wait for the app to answer
         env:
           FUNCTION_APP_URL: ${{ secrets.FUNCTION_APP_URL }}
         run: |
@@ -59,5 +63,22 @@ jobs:
             echo "Missing required secret: FUNCTION_APP_URL"
             exit 1
           fi
+          url="${FUNCTION_APP_URL%/}/api/health"
+          for attempt in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$url" || echo 000)
+            if [ "$code" = "200" ]; then
+              echo "Healthy after ${attempt} attempt(s)."
+              exit 0
+            fi
+            echo "Attempt ${attempt}: HTTP ${code} — retrying in 10s."
+            sleep 10
+          done
+          echo "App did not return 200 within ~5 minutes."
+          exit 1
+
+      - name: Run deployment smoke test
+        env:
+          FUNCTION_APP_URL: ${{ secrets.FUNCTION_APP_URL }}
+        run: |
           echo "Testing endpoint: $FUNCTION_APP_URL"
           dotnet test StockAggregator.Tests/StockAggregator.Tests.csproj --filter FullyQualifiedName~DeploymentSmokeTests

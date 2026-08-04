@@ -40,6 +40,13 @@ public sealed class RangeMatrixQueryService : IRangeMatrixQueryService
     /// </summary>
     private const decimal TrendBandShare = 0.5m;
 
+    /// <summary>
+    /// Share of tracked symbols that must have a bar on a date for it to become a column.
+    /// Set low enough that a genuine session with sparse coverage survives, high enough
+    /// that a US holiday carried by a couple of foreign listings does not.
+    /// </summary>
+    private const double MinColumnCoverage = 0.2;
+
     private const string OtherGroup = "Other";
 
     private readonly IDailyOhlcReadRepository _repository;
@@ -117,10 +124,25 @@ public sealed class RangeMatrixQueryService : IRangeMatrixQueryService
 
         // Column dates: trading days actually present in either source, optionally kept
         // to one weekday. Trimmed from the *start* so the most recent dates survive a cap.
-        var dates = official
-            .Select(c => c.TradingDate.Date)
-            .Concat(rollup.Select(c => c.TradingDate.Date))
-            .Distinct()
+        //
+        // A US market holiday still yields a date here, because the non-US members keep
+        // trading — 2026-06-19 and 2026-07-03 came back with a bar for 7203.T (Tokyo)
+        // and nothing else. That produces a near-empty column and, worse, a phantom step
+        // in every US symbol's change chain, since each cell compares against the
+        // previous populated column. Columns need a quorum of symbols to earn a place.
+        // Distinct symbols per date, not raw rows: the two sources overlap on the dates
+        // where both have bars, and counting rows would double every symbol there.
+        var dateCounts = official
+            .Select(c => (c.TradingDate.Date, c.Symbol))
+            .Concat(rollup.Select(c => (c.TradingDate.Date, c.Symbol)))
+            .GroupBy(x => x.Date)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.Symbol).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+
+        var quorum = Math.Max(1, (int)Math.Ceiling(symbols.Count * MinColumnCoverage));
+
+        var dates = dateCounts
+            .Where(kv => kv.Value >= quorum)
+            .Select(kv => kv.Key)
             .Where(d => dayOfWeek is null || (int)d.DayOfWeek == dayOfWeek.Value)
             .OrderBy(d => d)
             .ToList();
