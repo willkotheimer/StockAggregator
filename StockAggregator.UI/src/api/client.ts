@@ -4,6 +4,7 @@ import type {
   EtfGroup,
   HiddenSignalResponse,
   PriceHistoryResponse,
+  RangeMatrixResponse,
   RangeResponse,
   ReboundResponse,
   RotationResponse,
@@ -38,6 +39,16 @@ export const fetchAvailableDates = () =>
 
 export const fetchDays = (dates: string[]) =>
   getJson<WeekQuotesResponse>(`/api/quotes/days?dates=${dates.join(',')}`);
+
+// Trading days in the backfilled daily history — a much wider set than
+// fetchAvailableDates (snapshot days), and what range mode selects from.
+export const fetchTradingDates = () =>
+  getJson<string[]>('/api/quotes/trading-dates');
+
+export const fetchRangeMatrix = (from: string, to: string, dow: number | null) =>
+  getJson<RangeMatrixResponse>(
+    `/api/quotes/matrix?from=${from}&to=${to}${dow == null ? '' : `&dow=${dow}`}`,
+  );
 
 export const fetchRotations = () =>
   getJson<RotationResponse>('/api/analytics/rotations');

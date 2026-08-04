@@ -24,6 +24,7 @@ builder.Services.AddScoped<IRangeQueryService, RangeQueryService>();
 builder.Services.AddScoped<ICorrelationQueryService, CorrelationQueryService>();
 builder.Services.AddScoped<ICrawlerQueryService, CrawlerQueryService>();
 builder.Services.AddScoped<IPriceHistoryQueryService, PriceHistoryQueryService>();
+builder.Services.AddScoped<IRangeMatrixQueryService, RangeMatrixQueryService>();
 
 // The crawler screener scans every symbol's full history (~150s), so it's memoized
 // per window and refreshed nightly instead of computed on each request.

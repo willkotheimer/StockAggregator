@@ -11,10 +11,12 @@ namespace StockAggregatorApp.Controllers;
 public sealed class QuotesController : ControllerBase
 {
     private readonly IQuoteQueryService _service;
+    private readonly IRangeMatrixQueryService _matrix;
 
-    public QuotesController(IQuoteQueryService service)
+    public QuotesController(IQuoteQueryService service, IRangeMatrixQueryService matrix)
     {
         _service = service;
+        _matrix = matrix;
     }
 
     /// <summary>
@@ -54,5 +56,50 @@ public sealed class QuotesController : ControllerBase
             .ToList();
 
         return Ok(await _service.GetDaysAsync(parsed, cancellationToken));
+    }
+
+    /// <summary>
+    /// Trading dates present in the backfilled daily history — the selectable set for
+    /// range mode. Much wider than <c>available-dates</c>, which only covers days the
+    /// intraday snapshot capture actually ran.
+    /// </summary>
+    [HttpGet("trading-dates")]
+    public async Task<ActionResult<IReadOnlyList<string>>> GetTradingDates(CancellationToken cancellationToken = default)
+    {
+        return Ok(await _matrix.GetTradingDatesAsync(cancellationToken));
+    }
+
+    /// <summary>
+    /// Close-only symbol x date grid over a range, e.g. ?from=2026-01-02&amp;to=2026-06-30.
+    /// Optional dow (0=Sun..6=Sat) keeps just that weekday — dow=5 gives Fridays, and
+    /// the per-column change then reads week-over-week.
+    /// </summary>
+    [HttpGet("matrix")]
+    public async Task<ActionResult<RangeMatrixResponse>> GetMatrix(
+        [FromQuery] string from,
+        [FromQuery] string to,
+        [FromQuery] int? dow = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryParseDate(from, out var fromDate) || !TryParseDate(to, out var toDate))
+        {
+            return BadRequest("from and to must be yyyy-MM-dd dates.");
+        }
+
+        if (dow is < 0 or > 6)
+        {
+            return BadRequest("dow must be 0 (Sunday) through 6 (Saturday).");
+        }
+
+        return Ok(await _matrix.GetMatrixAsync(fromDate, toDate, dow, cancellationToken));
+    }
+
+    private static bool TryParseDate(string? value, out DateTime date)
+    {
+        return DateTime.TryParse(
+            value ?? string.Empty,
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None,
+            out date);
     }
 }

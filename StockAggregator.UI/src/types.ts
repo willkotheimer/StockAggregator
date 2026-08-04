@@ -24,6 +24,39 @@ export interface WeekQuotesResponse {
   rows: SymbolRow[];
 }
 
+export type TrendDirection = 'Unknown' | 'Up' | 'Down' | 'Channeling';
+
+/// Trend over the selected dates. netPct is first-to-last; bandPct is the low-to-high
+/// spread; positionInBand (0-100) is where the last close sits within that band —
+/// low in a channel reads as stretched-to-the-downside, high alongside a strong
+/// netPct reads as momentum.
+export interface TrendSummary {
+  direction: TrendDirection;
+  netPct: number | null;
+  bandPct: number | null;
+  positionInBand: number | null;
+}
+
+/// One matrix row. closes/changes are positional against RangeMatrixResponse.dates.
+export interface RangeMatrixRow {
+  id: string;
+  symbol: string;
+  isEtf: boolean;
+  groupEtf: string;
+  description: string | null;
+  closes: (number | null)[];
+  changes: (number | null)[];
+  trend: TrendSummary;
+}
+
+export interface RangeMatrixResponse {
+  from: string;
+  to: string;
+  dayOfWeek: number | null;
+  dates: string[];
+  rows: RangeMatrixRow[];
+}
+
 export interface RotationRow {
   rank: number;
   etf: string;

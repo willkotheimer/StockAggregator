@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Offcanvas } from 'bootstrap';
 import { useSearchParams } from 'react-router-dom';
-import { fetchAvailableDates, fetchDays, fetchEtfGroups } from '../api/client';
+import { fetchAvailableDates, fetchDays, fetchEtfGroups, fetchRangeMatrix, fetchTradingDates } from '../api/client';
 import { useApi } from '../hooks/useApi';
-import type { SymbolRow, WeekQuotesResponse } from '../types';
-import Calendar from '../components/Calendar';
+import type { RangeMatrixResponse, SymbolRow, WeekQuotesResponse } from '../types';
+import Calendar, { type CalendarMode, type DateRange } from '../components/Calendar';
 import QuotesTable from '../components/QuotesTable';
+import RangeMatrix from '../components/RangeMatrix';
 import StockChart from '../components/StockChart';
 
 // Categorical palette (dataviz), assigned to charted symbols in selection order.
@@ -24,12 +25,22 @@ function formatDate(iso: string): string {
 export default function QuotesPage() {
   const { data: available, loading: datesLoading, error: datesError } = useApi(fetchAvailableDates);
   const { data: groups } = useApi(fetchEtfGroups);
+  const { data: tradingDates } = useApi(fetchTradingDates);
   const [searchParams] = useSearchParams();
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [days, setDays] = useState<WeekQuotesResponse | null>(null);
   const [loadingDays, setLoadingDays] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Range mode: a span of trading days rendered as a close-only matrix, sourced from
+  // the backfilled daily history rather than the intraday snapshots.
+  const [mode, setMode] = useState<CalendarMode>('days');
+  const [range, setRange] = useState<DateRange | null>(null);
+  const [dow, setDow] = useState<number | null>(null);
+  const [matrix, setMatrix] = useState<RangeMatrixResponse | null>(null);
+  const [loadingMatrix, setLoadingMatrix] = useState(false);
+  const [matrixError, setMatrixError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   // null until initialised; then the set of ETF groups currently shown.
   const [visibleEtfs, setVisibleEtfs] = useState<Set<string> | null>(null);
@@ -60,6 +71,7 @@ export default function QuotesPage() {
   }, []);
 
   const availableSet = useMemo(() => new Set(available ?? []), [available]);
+  const tradingSet = useMemo(() => new Set(tradingDates ?? []), [tradingDates]);
 
   // One-time day init: a ?day= deep link wins, else default to the latest day.
   useEffect(() => {
@@ -82,11 +94,26 @@ export default function QuotesPage() {
     }
   }, [groups, searchParams]);
 
+  // Fetch the range matrix whenever a complete span (or its weekday filter) changes.
+  useEffect(() => {
+    if (mode !== 'range' || !range || range.end === null) {
+      return;
+    }
+    let live = true;
+    setLoadingMatrix(true);
+    setMatrixError(null);
+    fetchRangeMatrix(range.start, range.end, dow)
+      .then((m) => { if (live) setMatrix(m); })
+      .catch((e: unknown) => { if (live) setMatrixError(e instanceof Error ? e.message : String(e)); })
+      .finally(() => { if (live) setLoadingMatrix(false); });
+    return () => { live = false; };
+  }, [mode, range, dow]);
+
   // Fetch the selected days' data whenever the selection changes.
   useEffect(() => {
     const dates = [...selected].sort();
-    if (dates.length === 0) {
-      setDays(null);
+    if (mode !== 'days' || dates.length === 0) {
+      if (dates.length === 0) setDays(null);
       return;
     }
     let live = true;
@@ -97,7 +124,14 @@ export default function QuotesPage() {
       .catch((e: unknown) => { if (live) setError(e instanceof Error ? e.message : String(e)); })
       .finally(() => { if (live) setLoadingDays(false); });
     return () => { live = false; };
-  }, [selected]);
+  }, [selected, mode]);
+
+  // Range mode is about the date axis, so it opens with every group collapsed —
+  // 11 ETF rows rather than ~90 symbol rows across a wide grid.
+  const changeMode = (next: CalendarMode) => {
+    setMode(next);
+    if (next === 'range') setExpanded(new Set());
+  };
 
   const toggleDate = (date: string) =>
     setSelected((prev) => {
@@ -218,9 +252,16 @@ export default function QuotesPage() {
           {available && (
             <Calendar
               availableDates={availableSet}
+              tradingDates={tradingSet}
               selected={selected}
               onToggleDate={toggleDate}
               onSetDates={(dates) => setSelected(new Set(dates))}
+              mode={mode}
+              onSetMode={changeMode}
+              range={range}
+              onSetRange={setRange}
+              dow={dow}
+              onSetDow={setDow}
             />
           )}
 
@@ -242,7 +283,7 @@ export default function QuotesPage() {
             </div>
           )}
 
-          {days && sortedDates.length > 0 && shownEtfs.length > 0 && (
+          {shownEtfs.length > 0 && (mode === 'range' ? matrix != null : days != null && sortedDates.length > 0) && (
             <div className="pill-row">
               <button type="button" className="pill" onClick={allExpanded ? collapseAll : openAll}>
                 {allExpanded ? 'Collapse all' : 'Open all'}
@@ -250,6 +291,27 @@ export default function QuotesPage() {
             </div>
           )}
 
+          {mode === 'range' ? (
+            <div className="range-tables">
+              {loadingMatrix && <p>Loading…</p>}
+              {matrixError && <p className="error">Error: {matrixError}</p>}
+              {!loadingMatrix && !matrixError && (!range || range.end === null) && (
+                <p className="subtle">Pick a start and end date to see closing prices across the range.</p>
+              )}
+              {!loadingMatrix && !matrixError && matrix && range?.end != null && (
+                <RangeMatrix
+                  data={matrix}
+                  expanded={expanded}
+                  onToggleGroup={toggleGroup}
+                  visibleEtfs={visibleEtfs}
+                  chartSymbols={chartSet}
+                  onToggleChart={toggleStock}
+                  onAddEtf={toggleChartEtf}
+                  colorOf={colorOf}
+                />
+              )}
+            </div>
+          ) : (
           <div className="day-tables">
             {loadingDays && <p>Loading…</p>}
             {error && <p className="error">Error: {error}</p>}
@@ -270,6 +332,7 @@ export default function QuotesPage() {
               />
             ))}
           </div>
+          )}
         </div>
       </div>
     </section>

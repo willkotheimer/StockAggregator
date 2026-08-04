@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\StockAggregator.csproj" />
+    <ProjectReference Include="..\StockAggregatorApp\StockAggregatorApp.csproj" />
   </ItemGroup>
 
 </Project>

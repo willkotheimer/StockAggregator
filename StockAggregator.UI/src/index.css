@@ -436,8 +436,15 @@ body {
 }
 .cl-btn:hover, .chart-add:hover { border-color: var(--accent); color: var(--text); }
 .cl-btn.cl-x:hover { border-color: var(--down); color: var(--down); }
-.chart-add { margin-left: 8px; font-weight: 700; }
+/* Filled green at rest: this is the primary "add to chart" action and has to be
+   findable on first use, not just after it has been switched on. */
+.chart-add {
+  margin-left: 8px; font-weight: 700;
+  background: var(--etf); border-color: var(--etf-hover); color: #14331d;
+}
+.chart-add:hover { background: var(--etf-hover); border-color: var(--etf-hover); color: #0d2314; }
 .chart-add.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.chart-add.active:hover { background: var(--accent); color: #fff; }
 @media (max-width: 640px) {
   .chart-row { flex-direction: column; }
   .chart-legend { flex-basis: auto; max-height: none; border-right: none; border-bottom: 1px solid var(--border); padding: 0 0 10px; }
@@ -535,9 +542,59 @@ body {
   cursor: pointer;
 }
 .cal-quick button:disabled { opacity: 0.45; cursor: default; }
+.cal-quick button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Days / Range switch above the month grid. */
+.cal-modes { display: flex; gap: 4px; margin-bottom: 10px; }
+.cal-mode {
+  flex: 1 1 0;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--muted);
+  cursor: pointer;
+}
+.cal-mode.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Range span: filled ends, tinted interior, muted where the weekday filter excludes. */
+.cal-cell.cal-edge { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
+.cal-cell.sel:not(.cal-edge) { background: var(--lt-blue); color: var(--text); border-color: var(--accent); font-weight: 600; }
+.cal-cell.cal-muted { opacity: 0.4; font-weight: 400; }
+/* Weekends/holidays inside a span are shown as spanned but stay obviously inert. */
+.cal-cell.off.sel { background: transparent; border-color: transparent; color: #c3c7cd; font-weight: 400; }
+.cal-dow-filter { align-items: center; }
+.cal-range-hint { margin: 8px 0 0; font-size: 12px; }
 
 .day-tables { display: flex; gap: 16px; align-items: flex-start; overflow-x: auto; padding-bottom: 8px; }
 .day-tables .table-wrap { flex: 0 0 auto; }
+
+/* Range matrix: wide date axis, so the symbol column pins and the grid scrolls. */
+.range-tables { padding-bottom: 8px; }
+.range-matrix-wrap { overflow-x: auto; }
+.range-matrix { font-variant-numeric: tabular-nums; }
+.range-matrix th.rm-date, .range-matrix td.rm-date { text-align: right; white-space: nowrap; }
+.range-matrix th.rm-sym-col, .range-matrix td.rm-sym-col {
+  position: sticky; left: 0; z-index: 2;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+}
+.range-matrix thead th.rm-sym-col { z-index: 3; background: var(--header); color: var(--header-text); }
+.range-matrix .row-etf td.rm-sym-col { background: #eef4ec; }
+.range-matrix th.rm-sortable { cursor: pointer; white-space: nowrap; }
+.range-matrix th.rm-sortable:hover { color: var(--header-accent); }
+.range-matrix td.rm-trend { white-space: nowrap; }
+.range-matrix td.rm-num { text-align: right; font-size: 12px; color: var(--muted); }
+
+.trend { display: inline-flex; flex-direction: column; line-height: 1.25; }
+.trend-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+.trend-num { font-size: 13px; font-weight: 600; }
+.trend-pos { font-size: 10px; color: var(--muted); }
+.trend-up .trend-label, .trend-up .trend-num { color: var(--up); }
+.trend-down .trend-label, .trend-down .trend-num { color: var(--down); }
+.trend-flat .trend-label, .trend-flat .trend-num { color: var(--accent); }
 
 /* Bootstrap 5 offcanvas "Browse" panel: half-width desktop, full-width mobile,
    themed with our own vars (Bootstrap only supplies the offcanvas structure). */
@@ -618,6 +675,9 @@ body {
 :root[data-theme="dark"] .crawler-flagged:hover td { background: #1e4436; }
 :root[data-theme="dark"] .range-etf-row td { background: #17352b; }
 :root[data-theme="dark"] .range-etf-row:hover td { background: #1e4436; }
+:root[data-theme="dark"] .cal-mode { background: var(--panel); }
+:root[data-theme="dark"] .cal-cell.sel:not(.cal-edge) { background: #24365c; color: var(--text); }
+:root[data-theme="dark"] .range-matrix .row-etf td.rm-sym-col { background: #17352b; }
 .table-caption {
   padding: 6px 10px;
   font-weight: 600;

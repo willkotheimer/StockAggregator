@@ -121,7 +121,7 @@ export default function QuotesTable({
                   className={`chart-add${inChart ? ' active' : ''}`}
                   title={inChart ? 'Remove ETF from chart' : 'Add ETF + stocks to chart'}
                   onClick={(e) => { e.stopPropagation(); onAddEtf(row.groupEtf); }}
-                >+</button>
+                >{inChart ? '✓' : '+'}</button>
               )}
             </span>
           );
