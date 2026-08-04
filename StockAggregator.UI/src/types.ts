@@ -54,6 +54,10 @@ export interface RangeMatrixResponse {
   to: string;
   dayOfWeek: number | null;
   dates: string[];
+  /// First date priced from the nightly rollup instead of an official close — those
+  /// columns are the 14:30 CT snapshot, half an hour before the bell. Null when every
+  /// column is a true close.
+  provisionalFrom: string | null;
   rows: RangeMatrixRow[];
 }
 

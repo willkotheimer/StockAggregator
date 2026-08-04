@@ -54,10 +54,15 @@ public sealed record RangeMatrixRow(
 /// The close-only matrix: one column per selected date, one row per symbol.
 /// <c>DayOfWeek</c> is the weekday filter applied within the range (0=Sun..6=Sat),
 /// or null for every trading day in it.
+/// <c>ProvisionalFrom</c> is the first date whose prices come from the nightly rollup
+/// rather than official closes — those are the last snapshot of the session (14:30 CT,
+/// half an hour before the bell), not the closing print. Null when every column is an
+/// official close.
 /// </summary>
 public sealed record RangeMatrixResponse(
     string From,
     string To,
     int? DayOfWeek,
     IReadOnlyList<string> Dates,
+    string? ProvisionalFrom,
     IReadOnlyList<RangeMatrixRow> Rows);

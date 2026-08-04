@@ -13,9 +13,17 @@ public interface IRangeMatrixQueryService
 }
 
 /// <summary>
-/// Symbol x date grid of daily closes over a date range, from dbo.DailyOhlc. Unlike
-/// the snapshot grid this reads backfilled history, so it covers dates long before
-/// intraday capture started — at the cost of one price per day (the close).
+/// Symbol x date grid of daily closing prices over a date range, stitched from two
+/// sources so it is both deep and current:
+///
+///   dbo.DailyOhlc         — official closes, years of history, but only moves when
+///                           the manual backfill is run, so its recent end goes stale.
+///   dbo.DailySymbolStats  — the nightly rollup's LastPrice, self-maintaining but only
+///                           as old as intraday capture.
+///
+/// DailyOhlc wins wherever it has a bar, since a true close beats a near-close; the
+/// rollup fills only the dates it has not reached. The seam therefore heals on its
+/// own whenever a backfill runs, and no date is ever sourced from both.
 /// </summary>
 public sealed class RangeMatrixQueryService : IRangeMatrixQueryService
 {
@@ -35,18 +43,33 @@ public sealed class RangeMatrixQueryService : IRangeMatrixQueryService
     private const string OtherGroup = "Other";
 
     private readonly IDailyOhlcReadRepository _repository;
+    private readonly IAnalyticsReadRepository _rollup;
     private readonly IReadOnlyList<EtfGroup> _groups;
 
-    public RangeMatrixQueryService(IDailyOhlcReadRepository repository, IOptions<EtfGroupOptions> groupOptions)
+    public RangeMatrixQueryService(
+        IDailyOhlcReadRepository repository,
+        IAnalyticsReadRepository rollup,
+        IOptions<EtfGroupOptions> groupOptions)
     {
         _repository = repository;
+        _rollup = rollup;
         _groups = groupOptions.Value.Groups;
     }
 
     public async Task<IReadOnlyList<string>> GetTradingDatesAsync(CancellationToken cancellationToken = default)
     {
-        var dates = await _repository.GetTradingDatesAsync(cancellationToken);
-        return dates.Select(d => d.ToString("yyyy-MM-dd")).ToList();
+        // Union of both sources, so the picker offers recent days the backfill has
+        // not reached as well as the deep history only the backfill has.
+        var history = await _repository.GetTradingDatesAsync(cancellationToken);
+        var recent = await _rollup.GetRollupDatesAsync(cancellationToken);
+
+        return history
+            .Concat(recent)
+            .Select(d => d.Date)
+            .Distinct()
+            .OrderBy(d => d)
+            .Select(d => d.ToString("yyyy-MM-dd"))
+            .ToList();
     }
 
     public async Task<RangeMatrixResponse> GetMatrixAsync(
@@ -66,19 +89,37 @@ public sealed class RangeMatrixQueryService : IRangeMatrixQueryService
             .Distinct()
             .ToList();
 
-        var closes = await _repository.GetClosesForSymbolsAsync(symbols, from, to, cancellationToken);
+        var official = await _repository.GetClosesForSymbolsAsync(symbols, from, to, cancellationToken);
+        var rollup = await _rollup.GetLastPricesForSymbolsAsync(symbols, from, to, cancellationToken);
 
-        var bySymbol = closes
+        var bySymbol = official
             .GroupBy(c => c.Symbol, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
                 g => g.Key,
                 g => g.ToDictionary(c => c.TradingDate.Date, c => c.Close),
                 StringComparer.OrdinalIgnoreCase);
 
-        // Column dates: trading days actually present in the data, optionally kept to
-        // one weekday. Trimmed from the *start* so the most recent dates survive a cap.
-        var dates = closes
+        // Rollup prices fill gaps only — an official close already present for that
+        // symbol and date always wins.
+        foreach (var row in rollup)
+        {
+            if (!bySymbol.TryGetValue(row.Symbol, out var byDate))
+            {
+                byDate = new Dictionary<DateTime, decimal>();
+                bySymbol[row.Symbol] = byDate;
+            }
+
+            if (!byDate.ContainsKey(row.TradingDate.Date))
+            {
+                byDate[row.TradingDate.Date] = row.Close;
+            }
+        }
+
+        // Column dates: trading days actually present in either source, optionally kept
+        // to one weekday. Trimmed from the *start* so the most recent dates survive a cap.
+        var dates = official
             .Select(c => c.TradingDate.Date)
+            .Concat(rollup.Select(c => c.TradingDate.Date))
             .Distinct()
             .Where(d => dayOfWeek is null || (int)d.DayOfWeek == dayOfWeek.Value)
             .OrderBy(d => d)
@@ -106,11 +147,17 @@ public sealed class RangeMatrixQueryService : IRangeMatrixQueryService
             rows.Add(BuildRow(symbol, isEtf: false, OtherGroup, null, dates, bySymbol));
         }
 
+        // Flag where official closes run out, so the client can label the tail rather
+        // than quietly presenting 14:30 CT prices as closing prints.
+        var officialDates = official.Select(c => c.TradingDate.Date).ToHashSet();
+        var provisionalFrom = dates.Where(d => !officialDates.Contains(d)).OrderBy(d => d).FirstOrDefault();
+
         return new RangeMatrixResponse(
             from.ToString("yyyy-MM-dd"),
             to.ToString("yyyy-MM-dd"),
             dayOfWeek,
             dates.Select(d => d.ToString("yyyy-MM-dd")).ToList(),
+            provisionalFrom == default ? null : provisionalFrom.ToString("yyyy-MM-dd"),
             rows);
     }
 

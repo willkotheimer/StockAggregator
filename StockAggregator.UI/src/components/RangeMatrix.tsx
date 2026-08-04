@@ -117,6 +117,10 @@ export default function RangeMatrix({
 
   const sortArrow = (key: SortKey) => (sort === key ? (desc ? ' ▼' : ' ▲') : '');
 
+  // Where official closes stop and rollup prices begin, used to caption the seam
+  // and to mark the affected column headers.
+  const provisionalIndex = data.provisionalFrom ? data.dates.indexOf(data.provisionalFrom) : -1;
+
   if (data.dates.length === 0) {
     return <p className="subtle">No trading days in that range{data.dayOfWeek != null && ' for that weekday'}.</p>;
   }
@@ -126,11 +130,26 @@ export default function RangeMatrix({
       <div className="table-caption">
         {data.from} → {data.to} · {data.dates.length} column{data.dates.length === 1 ? '' : 's'} · closing price
       </div>
+      {data.provisionalFrom && (
+        <p className="rm-provisional subtle">
+          Closes through {provisionalIndex > 0 ? data.dates[provisionalIndex - 1] : '—'}; from{' '}
+          {data.provisionalFrom} the price is the last snapshot of the session (14:30 CT), not the closing print.
+        </p>
+      )}
       <table className="quotes-table range-matrix">
         <thead>
           <tr>
             <th className="rm-sym-col">Symbol</th>
-            {data.dates.map((d) => <th key={d} className="rm-date">{formatDateHeader(d)}</th>)}
+            {data.dates.map((d, i) => (
+              <th
+                key={d}
+                className={`rm-date${provisionalIndex >= 0 && i >= provisionalIndex ? ' rm-provisional-col' : ''}`}
+                title={provisionalIndex >= 0 && i >= provisionalIndex ? 'Last snapshot of the session (14:30 CT), not the closing print' : undefined}
+              >
+                {formatDateHeader(d)}
+                {provisionalIndex >= 0 && i >= provisionalIndex && <span className="rm-prov-mark">*</span>}
+              </th>
+            ))}
             <th className="rm-trend rm-sortable" onClick={() => toggleSort('net')} title="Net move, first to last close. Click to sort.">
               Trend{sortArrow('net')}
             </th>
