@@ -1,3 +1,4 @@
+using StockAggregatorApp;
 using StockAggregatorApp.Auth;
 using StockAggregatorApp.Data;
 using StockAggregatorApp.Repositories;
@@ -41,7 +42,7 @@ builder.Services.AddOutputCache(options =>
 {
     options.AddPolicy("api", policy => policy
         .Expire(TimeSpan.FromMinutes(10))
-        .SetVaryByQuery("days", "dates", "date", "window", "symbols", "mode", "threshold", "pullback"));
+        .SetVaryByQuery(CachedQueryKeys.All));
 });
 
 // Allow the React dev/published origin(s) from config.
