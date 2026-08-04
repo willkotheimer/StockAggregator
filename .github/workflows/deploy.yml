@@ -63,17 +63,48 @@ jobs:
             echo "Missing required secret: FUNCTION_APP_URL"
             exit 1
           fi
-          url="${FUNCTION_APP_URL%/}/api/health"
+          # Take scheme+host only and hang /api/health off the root, mirroring the
+          # smoke test's new Uri(baseUri, "/api/health"). Appending instead would
+          # 404 whenever the secret carries any path of its own.
+          origin=$(printf '%s' "$FUNCTION_APP_URL" | tr -d '[:space:]' | sed -E 's#^(https?://[^/]+).*#\1#')
+          # A restarting host can 404 briefly while it re-indexes its functions, so a
+          # short 404 window is tolerated. Past that it means the path is wrong, and
+          # waiting the full five minutes would only delay the same failure.
+          max_not_found=6
+          not_found=0
+          body=$(mktemp)
+
           for attempt in $(seq 1 30); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$url" || echo 000)
-            if [ "$code" = "200" ]; then
-              echo "Healthy after ${attempt} attempt(s)."
-              exit 0
-            fi
-            echo "Attempt ${attempt}: HTTP ${code} — retrying in 10s."
+            code=$(curl -s -o "$body" -w '%{http_code}' --max-time 20 "$origin/api/health") || code=000
+            case "$code" in
+              200)
+                echo "Healthy after ${attempt} attempt(s)."
+                exit 0
+                ;;
+              000|5*)
+                not_found=0
+                echo "Attempt ${attempt}: HTTP ${code} at /api/health — app starting, retrying in 10s."
+                ;;
+              404)
+                not_found=$((not_found + 1))
+                echo "Attempt ${attempt}: HTTP 404 at /api/health (${not_found}/${max_not_found} tolerated)."
+                if [ "$not_found" -ge "$max_not_found" ]; then
+                  echo "::error::/api/health kept returning 404, so the host is up but the route is not there."
+                  echo "FUNCTION_APP_URL must be the app origin only — https://<app>.azurewebsites.net, no trailing path."
+                  echo "Path component currently on the secret: '$(printf '%s' "$FUNCTION_APP_URL" | tr -d '[:space:]' | sed -E 's#^https?://[^/]+##')'"
+                  head -c 300 "$body"; echo
+                  exit 1
+                fi
+                ;;
+              *)
+                echo "::error::HTTP ${code} at /api/health — not a startup state."
+                head -c 300 "$body"; echo
+                exit 1
+                ;;
+            esac
             sleep 10
           done
-          echo "App did not return 200 within ~5 minutes."
+          echo "::error::App did not return 200 within ~5 minutes."
           exit 1
 
       - name: Run deployment smoke test
