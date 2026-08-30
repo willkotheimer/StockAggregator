@@ -11,6 +11,7 @@
   --up: #157f3b;
   --down: #c62828;
   --accent: #5b3fb0;
+  --accent-hover: #4a3193;
   --header: #333a44;
   --header-text: #eef1f5;
   --header-accent: #bda9f2;
@@ -640,9 +641,15 @@ body {
   border: 1px solid var(--border); background: var(--bg); color: var(--text);
   border-radius: 6px; cursor: pointer; font-size: 13px; line-height: 1;
 }
-.drawer-open { margin-bottom: 12px; padding: 6px 12px; }
+/* Filled accent: on --bg this is the one call-to-action on an otherwise empty
+   chart page, and it disappeared into the background it was painted with. */
+.drawer-open {
+  margin-bottom: 12px; padding: 6px 12px; font-weight: 600;
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
 .drawer-close { width: 28px; height: 28px; padding: 0; }
-.drawer-open:hover, .drawer-close:hover { border-color: var(--accent); }
+.drawer-open:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.drawer-close:hover { border-color: var(--accent); }
 
 /* Chart hero header */
 .chart-hero { margin-bottom: 10px; }
@@ -679,6 +686,7 @@ body {
   --stock: #1a2440;      /* subtle dark-navy tint for member rows */
   --stock-hover: #212f52;
   --accent: #6ea8fe;     /* blue accent (matches the reference) */
+  --accent-hover: #8bbaff;
   --header: #1b2743;
   --header-text: #eaf0fb;
   --header-accent: #9dc1ff;
@@ -700,6 +708,7 @@ body {
 :root[data-theme="dark"] .crawler-flagged:hover td { background: #1e4436; }
 :root[data-theme="dark"] .range-etf-row td { background: #17352b; }
 :root[data-theme="dark"] .range-etf-row:hover td { background: #1e4436; }
+:root[data-theme="dark"] .drawer-open { color: #0b1220; }
 :root[data-theme="dark"] .cal-mode { background: var(--panel); }
 :root[data-theme="dark"] .cal-cell.sel:not(.cal-edge) { background: #24365c; color: var(--text); }
 :root[data-theme="dark"] .range-matrix .row-etf td.rm-sym-col,
