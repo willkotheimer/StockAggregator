@@ -56,6 +56,34 @@ The four timer functions are already configured in [Functions/MarketSnapshotFunc
 
 These run on trading days only (Monday-Friday) because the cron expression uses `1-5` in the day-of-week field.
 
+## 3a. Midday digest email
+
+`DailyDigest` ([Functions/DailyDigestFunction.cs](Functions/DailyDigestFunction.cs)) runs at
+11:30 CT on weekdays. It fetches fresh prices and saves them as an `11:30 CT` snapshot,
+asks the web app for the email (`GET /api/digest`), and sends it through Azure
+Communication Services Email. If the quotes show the market is closed (a holiday), it
+sends nothing.
+
+1. Deploy the email resources with [infra/email.bicep](infra/email.bicep). It is separate
+   from `main.bicep` so it never rewrites the Function App's other settings:
+   ```bash
+   az deployment group create -g <rg> -f infra/email.bicep \
+     -p functionAppPrincipalId=$(az functionapp identity show -n <function-app> -g <rg> --query principalId -o tsv)
+   ```
+   The template also gives the Function App's managed identity permission to send, so
+   there is no email key or password.
+2. Add these Function App settings, using the deployment's two outputs:
+   - `CommunicationServicesEndpoint`: e.g. `https://<acs>.unitedstates.communication.azure.com`
+   - `DigestSenderAddress`: e.g. `DoNotReply@<id>.azurecomm.net`
+   - `DigestRecipients`: comma-separated addresses
+   - `DigestWebAppUrl`: optional, defaults to `https://stockaggregator-web.azurewebsites.net/`
+   - `WebAppApiKey`: only if the web app has an `ApiKey` set
+3. Check the email without sending: open `https://<web-app>/digest/preview`
+   (optionally `?date=yyyy-MM-dd`).
+4. Send a test: `POST /api/digest/send` on the Function App, with the function key. By
+   default this resends from stored prices, so it works on a weekend. Add `fresh=true`
+   to run the full scheduled path, or `date=yyyy-MM-dd` to build the email for a past day.
+
 ## 4. Azure DevOps pipeline
 
 This repository contains [azure-pipelines.yml](azure-pipelines.yml), which:

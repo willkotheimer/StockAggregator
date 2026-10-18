@@ -34,6 +34,7 @@ builder.Services.AddSingleton<AnalyticsRollupService>();
 builder.Services.AddSingleton<HistoricalBackfillService>();
 builder.Services.AddSingleton<SnapshotRunner>();
 builder.Services.AddSingleton<ISnapshotRunner>(sp => sp.GetRequiredService<SnapshotRunner>());
+builder.Services.AddSingleton<DailyDigestRunner>();
 
 if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APPLICATIONINSIGHTS_CONNECTION_STRING")))
 {

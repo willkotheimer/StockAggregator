@@ -3,6 +3,7 @@ using StockAggregatorApp.Auth;
 using StockAggregatorApp.Data;
 using StockAggregatorApp.Repositories;
 using StockAggregatorApp.Services;
+using StockAggregatorApp.Services.Digest;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +27,8 @@ builder.Services.AddScoped<ICorrelationQueryService, CorrelationQueryService>();
 builder.Services.AddScoped<ICrawlerQueryService, CrawlerQueryService>();
 builder.Services.AddScoped<IPriceHistoryQueryService, PriceHistoryQueryService>();
 builder.Services.AddScoped<IRangeMatrixQueryService, RangeMatrixQueryService>();
+builder.Services.AddScoped<IDigestReadRepository, DigestReadRepository>();
+builder.Services.AddScoped<IDigestQueryService, DigestQueryService>();
 
 // The crawler screener scans every symbol's full history (~150s), so it's memoized
 // per window and refreshed nightly instead of computed on each request.

@@ -109,7 +109,8 @@ public sealed class ReboundQueryService : IReboundQueryService
             DaysSinceExtreme: (lastBar.TradingDate - e.ExtremeDate).Days);
     }
 
-    private static ReboundBaseRateDto? BuildBaseRate(IReadOnlyList<ReboundAnalysis.Episode> completed, decimal referenceMovePct)
+    /// <summary>Also used by the midday digest for its "what happened before" lines.</summary>
+    internal static ReboundBaseRateDto? BuildBaseRate(IReadOnlyList<ReboundAnalysis.Episode> completed, decimal referenceMovePct)
     {
         var floor = Math.Max(0m, referenceMovePct - ComparableBandPct);
 

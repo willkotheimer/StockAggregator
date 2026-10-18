@@ -55,7 +55,7 @@ public sealed class AnalyticsQueryService : IAnalyticsQueryService
                 .OrderByDescending(m => m.ChangePct)
                 .FirstOrDefault();
 
-            var isHidden = etfChange is { } e && e >= EtfUpThreshold && tracked > 0 && up * 2 <= tracked;
+            var isHidden = IsHiddenSignal(etfChange, tracked, up);
 
             signals.Add(new HiddenSignal(
                 group.Etf,
@@ -78,6 +78,14 @@ public sealed class AnalyticsQueryService : IAnalyticsQueryService
 
         return new HiddenSignalResponse(asOf.Value.ToString("yyyy-MM-dd"), ordered);
     }
+
+    /// <summary>
+    /// The hidden-signal rule on its own: the ETF is up at least the threshold while
+    /// half or fewer of its tracked members are up. Shared with the midday digest,
+    /// which applies it to live intraday changes instead of the nightly rollup.
+    /// </summary>
+    public static bool IsHiddenSignal(decimal? etfChangePct, int membersTracked, int membersUp) =>
+        etfChangePct is { } e && e >= EtfUpThreshold && membersTracked > 0 && membersUp * 2 <= membersTracked;
 
     public async Task<RotationResponse> GetRotationsAsync(DateTime? date, CancellationToken cancellationToken = default)
     {

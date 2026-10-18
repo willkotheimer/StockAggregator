@@ -114,6 +114,9 @@ public class QuoteFetcher
         var volume = ReadLong(meta, "regularMarketVolume");
         var dayHigh = ReadDecimal(meta, "regularMarketDayHigh");
         var dayLow = ReadDecimal(meta, "regularMarketDayLow");
+        var marketTime = ReadLong(meta, "regularMarketTime") is { } unix
+            ? DateTimeOffset.FromUnixTimeSeconds(unix)
+            : (DateTimeOffset?)null;
 
         decimal? changePercent = price.HasValue && previousClose is { } prev && prev != 0m
             ? Math.Round((price.Value - prev) / prev * 100m, 4)
@@ -133,6 +136,7 @@ public class QuoteFetcher
             DayHigh = dayHigh,
             DayLow = dayLow,
             PreviousClose = previousClose,
+            RegularMarketTime = marketTime,
         };
     }
 

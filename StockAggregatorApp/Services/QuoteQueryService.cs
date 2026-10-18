@@ -14,13 +14,15 @@ public sealed class QuoteQueryService : IQuoteQueryService
 {
     private const string OtherGroup = "Other";
 
-    // Canonical order of the four daily capture times, by RunLabel.
+    // Canonical order of the daily capture times, by RunLabel. 11:30 CT is the fresh
+    // fetch the midday digest saves just before it sends.
     private static readonly Dictionary<string, int> RunOrder = new(StringComparer.OrdinalIgnoreCase)
     {
         ["08:30 CT"] = 0,
         ["11:00 CT"] = 1,
-        ["13:00 CT"] = 2,
-        ["14:30 CT"] = 3,
+        ["11:30 CT"] = 2,
+        ["13:00 CT"] = 3,
+        ["14:30 CT"] = 4,
     };
 
     private readonly IQuoteReadRepository _repository;

@@ -28,4 +28,12 @@ public class StockQuote
 
     /// <summary>Prior session close (Yahoo chartPreviousClose).</summary>
     public decimal? PreviousClose { get; set; }
+
+    /// <summary>
+    /// When Yahoo's price was last updated (regularMarketTime). Not stored; the midday
+    /// digest uses it to tell a live session from a market holiday, when Yahoo keeps
+    /// returning the previous session's prices.
+    /// </summary>
+    [JsonIgnore]
+    public DateTimeOffset? RegularMarketTime { get; set; }
 }
