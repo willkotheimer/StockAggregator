@@ -24,6 +24,14 @@ builder.Services.AddHttpClient("yahoo", client =>
     client.DefaultRequestHeaders.UserAgent.ParseAdd(
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36");
 });
+// Nasdaq's public API also expects a browser-like client and asks for JSON explicitly.
+builder.Services.AddHttpClient("nasdaq", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36");
+    client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+});
 builder.Services.AddSingleton<QuoteFetcher>();
 builder.Services.AddSingleton<HistoricalQuoteFetcher>();
 builder.Services.AddSingleton<SqlConnectionFactory>();
@@ -35,6 +43,8 @@ builder.Services.AddSingleton<HistoricalBackfillService>();
 builder.Services.AddSingleton<SnapshotRunner>();
 builder.Services.AddSingleton<ISnapshotRunner>(sp => sp.GetRequiredService<SnapshotRunner>());
 builder.Services.AddSingleton<DailyDigestRunner>();
+builder.Services.AddSingleton<EarningsDateFetcher>();
+builder.Services.AddSingleton<EarningsRepository>();
 
 if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APPLICATIONINSIGHTS_CONNECTION_STRING")))
 {

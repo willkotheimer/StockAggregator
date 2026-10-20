@@ -4,6 +4,7 @@ using StockAggregatorApp.Data;
 using StockAggregatorApp.Repositories;
 using StockAggregatorApp.Services;
 using StockAggregatorApp.Services.Digest;
+using StockAggregatorApp.Services.Projection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +30,12 @@ builder.Services.AddScoped<IPriceHistoryQueryService, PriceHistoryQueryService>(
 builder.Services.AddScoped<IRangeMatrixQueryService, RangeMatrixQueryService>();
 builder.Services.AddScoped<IDigestReadRepository, DigestReadRepository>();
 builder.Services.AddScoped<IDigestQueryService, DigestQueryService>();
+builder.Services.AddScoped<IProjectionReadRepository, ProjectionReadRepository>();
+
+// The projection test replays five years of history (~seconds of CPU), so its
+// scorecard is computed once per new trading day and shared.
+builder.Services.AddSingleton<ProjectionScorecardCache>();
+builder.Services.AddHostedService<ProjectionScorecardRefresher>();
 
 // The crawler screener scans every symbol's full history (~150s), so it's memoized
 // per window and refreshed nightly instead of computed on each request.

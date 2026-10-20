@@ -84,6 +84,14 @@ sends nothing.
    default this resends from stored prices, so it works on a weekend. Add `fresh=true`
    to run the full scheduled path, or `date=yyyy-MM-dd` to build the email for a past day.
 
+The bottom of the email reports the projection test (`GET /api/projections` on the web
+app): each pattern, alone or paired, guesses the price 20 trading days ahead, and the
+email shows how often the guesses land against a no-pattern baseline. It marks guesses
+whose window crossed a quarter end or an earnings report. Earnings dates come from
+`EarningsRefresh` (Saturdays 07:00 CT, or `POST /api/earnings/refresh`) into
+`dbo.EarningsDates`. Run [sql/006_create_EarningsDates.sql](sql/006_create_EarningsDates.sql)
+before deploying code that uses it.
+
 ## 4. Azure DevOps pipeline
 
 This repository contains [azure-pipelines.yml](azure-pipelines.yml), which:

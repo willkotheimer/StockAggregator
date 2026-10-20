@@ -1,4 +1,5 @@
 using System.Globalization;
+using StockAggregatorApp.Services.Projection;
 
 namespace StockAggregatorApp.Services.Digest;
 
@@ -43,7 +44,7 @@ public static class DigestWriter
         "Prices come from Yahoo Finance and can be a few minutes late.",
     ];
 
-    public static DigestContent Write(DigestSignals s, DataHealth health)
+    public static DigestContent Write(DigestSignals s, DataHealth health, ProjectionScorecard? scorecard = null)
     {
         var sections = new List<DigestSection>();
 
@@ -143,6 +144,10 @@ public static class DigestWriter
         Add(sections, "Look closer", closer);
         Add(sections, "The past month", month);
         Add(sections, "Down from a recent high", before);
+        if (scorecard is not null)
+        {
+            Add(sections, "How the price guesses are doing", Guesses(scorecard));
+        }
 
         return new DigestContent(
             Subject: Subject(s),
@@ -152,6 +157,76 @@ public static class DigestWriter
             Disclaimer: Disclaimer,
             DataCheck: DataCheck(health));
     }
+
+    /// <summary>Top patterns listed in the email's readout.</summary>
+    public const int TopPatterns = 5;
+
+    /// <summary>
+    /// The projection test's readout: overall accuracy and its direction, the best
+    /// patterns, and how quarter ends and earnings reports affect the guesses.
+    /// </summary>
+    private static List<DigestItem> Guesses(ProjectionScorecard card)
+    {
+        var items = new List<DigestItem>();
+        if (card.Recent.HitRate is not { } recent || card.Recent.BaselineHitRate is not { } recentBase)
+        {
+            return items;
+        }
+
+        items.Add(Item(
+            $"Each day we guess where prices will be {card.HorizonDays} trading days later, then check.",
+            "A guess lands when the price ends within a normal month's move of it."));
+
+        var sentences = new List<string>
+        {
+            $"In the last 20 trading days, {Whole(recent)} of guesses landed.",
+            $"Guessing with no pattern landed {Whole(recentBase)}.",
+        };
+        if (card.PriorRecent.HitRate is { } prior)
+        {
+            var (now, then) = (Math.Round(recent * 100), Math.Round(prior * 100));
+            sentences.Add(now == then
+                ? "That is the same as the 20 days before."
+                : $"That is {(now > then ? "up" : "down")} from {Whole(prior)} the 20 days before.");
+        }
+        items.Add(new DigestItem(sentences));
+
+        var top = card.Patterns.Take(TopPatterns).ToList();
+        if (top.Count > 0)
+        {
+            items.Add(Item("The best patterns so far:"));
+            foreach (var p in top)
+            {
+                items.Add(Item(
+                    $"{p.Label}.",
+                    $"{Whole(p.All.HitRate ?? 0)} landed, vs {Whole(p.All.BaselineHitRate ?? 0)} with no pattern, over {p.All.Tests.ToString("N0", En)} tests."));
+            }
+        }
+
+        var passed = card.Patterns.Count(p => p.Passed);
+        items.Add(Item(
+            passed switch
+            {
+                0 => "No pattern has passed the full test yet.",
+                1 => "1 pattern has passed the full test.",
+                _ => $"{passed} patterns have passed the full test.",
+            },
+            "Passing means beating no pattern by 10 points, in both the older and the newer years."));
+
+        if (card.QuarterEnd.With.HitRate is { } qWith && card.QuarterEnd.Without.HitRate is { } qWithout)
+        {
+            items.Add(Item($"Guesses that crossed a quarter end landed {Whole(qWith)}. Others landed {Whole(qWithout)}."));
+        }
+        if (card.Earnings.With.HitRate is { } eWith && card.Earnings.Without.HitRate is { } eWithout)
+        {
+            items.Add(Item($"Guesses that crossed an earnings report landed {Whole(eWith)}. Others landed {Whole(eWithout)}."));
+        }
+
+        return items;
+    }
+
+    /// <summary>0.4718 -> "47%".</summary>
+    private static string Whole(double rate) => Math.Round(rate * 100, MidpointRounding.AwayFromZero).ToString("0", En) + "%";
 
     /// <summary>The digest for a day with no prices yet: still says plainly why it's empty.</summary>
     public static DigestContent WriteEmpty(DateTime tradingDate, DataHealth health) => new(

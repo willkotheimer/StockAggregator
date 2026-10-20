@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using StockAggregatorApp.Repositories;
+using StockAggregatorApp.Services.Projection;
 
 namespace StockAggregatorApp.Services.Digest;
 
@@ -39,6 +40,8 @@ public sealed class DigestQueryService : IDigestQueryService
     private readonly IDailyOhlcReadRepository _ohlc;
     private readonly IAnalyticsReadRepository _rollup;
     private readonly IReadOnlyList<EtfGroup> _groups;
+    private readonly ProjectionScorecardCache _scorecard;
+    private readonly ILogger<DigestQueryService> _logger;
     private readonly string _dashboardUrl;
 
     public DigestQueryService(
@@ -46,8 +49,12 @@ public sealed class DigestQueryService : IDigestQueryService
         IDailyOhlcReadRepository ohlc,
         IAnalyticsReadRepository rollup,
         IOptions<EtfGroupOptions> groupOptions,
-        IConfiguration config)
+        ProjectionScorecardCache scorecard,
+        IConfiguration config,
+        ILogger<DigestQueryService> logger)
     {
+        _scorecard = scorecard;
+        _logger = logger;
         _digest = digest;
         _ohlc = ohlc;
         _rollup = rollup;
@@ -92,8 +99,27 @@ public sealed class DigestQueryService : IDigestQueryService
 
         var input = new DigestInput(tradingDate, _groups, live, Stitch(official, recent));
         var signals = DigestAnalysis.Compute(input);
-        var content = DigestWriter.Write(signals, health);
+        var content = DigestWriter.Write(signals, health, await ScorecardAsync(cancellationToken));
         return Respond(tradingDate, true, content, signals, includeDataCheck);
+    }
+
+    /// <summary>
+    /// The projection readout is a bonus, not the email: if the scorecard isn't ready in
+    /// time or fails, the digest still goes out without that section.
+    /// </summary>
+    private async Task<ProjectionScorecard?> ScorecardAsync(CancellationToken cancellationToken)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(60));
+        try
+        {
+            return await _scorecard.GetAsync(timeout.Token);
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning(ex, "Projection scorecard unavailable; sending the digest without it.");
+            return null;
+        }
     }
 
     private DigestResponse Respond(DateTime tradingDate, bool hasData, DigestContent content, DigestSignals? signals, bool includeDataCheck) =>
@@ -106,8 +132,11 @@ public sealed class DigestQueryService : IDigestQueryService
             content,
             signals);
 
-    /// <summary>Official closes win; the rollup only fills dates the backfill hasn't reached.</summary>
-    private static Dictionary<string, IReadOnlyList<DailyClose>> Stitch(
+    /// <summary>
+    /// Official closes win; the rollup only fills dates the backfill hasn't reached.
+    /// Shared with the projection test, which needs the same deep-and-current history.
+    /// </summary>
+    internal static Dictionary<string, IReadOnlyList<DailyClose>> Stitch(
         IReadOnlyList<SymbolClose> official, IReadOnlyList<SymbolClose> recent)
     {
         var bySymbol = new Dictionary<string, SortedDictionary<DateTime, decimal>>(StringComparer.OrdinalIgnoreCase);

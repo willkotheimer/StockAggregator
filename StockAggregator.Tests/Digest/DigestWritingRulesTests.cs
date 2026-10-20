@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using StockAggregatorApp.Models;
 using StockAggregatorApp.Services.Digest;
+using StockAggregatorApp.Services.Projection;
 using Xunit;
 
 namespace StockAggregator.Tests.Digest;
@@ -48,7 +49,33 @@ public class DigestWritingRulesTests
                 new FarFromHigh("AMD", 10.4m, new DateTime(2024, 5, 1), new ReboundBaseRateDto(7m, 1, 21, 21, 21, 90, 1, 180, 1)),
                 new FarFromHigh("TSLA", 10.1m, new DateTime(2024, 5, 1), null),
             ]),
-        new DataHealth(["08:30 CT", "11:00 CT", "11:30 CT"], Day.AddHours(-2), "Success", Day.AddDays(-14), 9));
+        new DataHealth(["08:30 CT", "11:00 CT", "11:30 CT"], Day.AddHours(-2), "Success", Day.AddDays(-14), 9),
+        Scorecard());
+
+    private static PatternScore Pattern(string label, int tests, double hit, double baseline, bool passed = false)
+    {
+        var score = new HitScore(tests, hit, baseline);
+        var split = new EventSplit(score, score);
+        return new PatternScore(label, label, score, score, score, split, split, passed);
+    }
+
+    private static ProjectionScorecard Scorecard() => new(
+        AsOf: Day,
+        HorizonDays: 20,
+        SplitDate: new DateTime(2024, 9, 2),
+        Recent: new HitScore(651, 0.467, 0.476),
+        PriorRecent: new HitScore(737, 0.493, 0.497),
+        QuarterEnd: new EventSplit(new HitScore(10042, 0.524, 0.533), new HitScore(22181, 0.481, 0.483)),
+        Earnings: new EventSplit(new HitScore(8000, 0.452, 0.46), new HitScore(9000, 0.551, 0.55)),
+        Patterns:
+        [
+            Pattern("10% or more below its recent high, plus in the strongest group this month", 420, 0.462, 0.438),
+            Pattern("At a 1-month low, plus a steady climber", 312, 0.587, 0.571),
+            Pattern("Near the bottom of its usual range, plus moved twice its normal day", 752, 0.497, 0.491),
+            Pattern("At a 1-month high", 2305, 0.505, 0.504, passed: true),
+            Pattern("Moved twice its normal day", 3356, 0.495, 0.494),
+            Pattern("A steady climber", 1013, 0.583, 0.596),
+        ]);
 
     private static DigestContent Quiet() => DigestWriter.Write(
         new DigestSignals(Day, Day.AddHours(16), new GroupMove("XLK", 0.3m), new GroupMove("XLE", -0.2m), [], [], [], [], [], []),
@@ -108,6 +135,9 @@ public class DigestWritingRulesTests
         Assert.Contains("fell this far 6 times", text);
         Assert.Contains("fell this far once", text);
         Assert.Contains("has not fallen this far", text);
+        Assert.Contains("of guesses landed", text);
+        Assert.Contains("crossed a quarter end", text);
+        Assert.Contains("crossed an earnings report", text);
     }
 
     [Fact]
@@ -132,6 +162,22 @@ public class DigestWritingRulesTests
         Assert.Contains("it took 12 to 80 days", text);
         Assert.Contains("Usually it took about 34 days.", text);
         Assert.Contains("It is now flat.", text);
+    }
+
+    [Fact]
+    public void GuessesReadout_ShowsAccuracyItsDirectionAndTheTopFive()
+    {
+        var guesses = Everything().Sections.Single(s => s.Heading == "How the price guesses are doing");
+        var text = string.Join(" ", guesses.Items.SelectMany(i => i.Sentences));
+
+        Assert.Contains("In the last 20 trading days, 47% of guesses landed.", text);
+        Assert.Contains("Guessing with no pattern landed 48%.", text);
+        Assert.Contains("That is down from 49% the 20 days before.", text);
+        Assert.Contains("At a 1-month low, plus a steady climber. 59% landed, vs 57% with no pattern, over 312 tests.", text);
+        Assert.Contains("1 pattern has passed the full test.", text);
+        // Five listed, not six.
+        Assert.DoesNotContain("A steady climber. 58% landed", text);
+        Assert.Equal("How the price guesses are doing", Everything().Sections[^1].Heading);
     }
 
     [Fact]
