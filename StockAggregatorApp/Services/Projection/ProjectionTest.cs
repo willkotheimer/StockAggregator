@@ -39,7 +39,9 @@ public sealed record ProjectionScorecard(
     EventSplit QuarterEnd,
     EventSplit Earnings,
     // Patterns with enough tests to list, best edge first.
-    IReadOnlyList<PatternScore> Patterns);
+    IReadOnlyList<PatternScore> Patterns,
+    // Guesses that one fund's big day is followed by another's; see FollowOnTest.
+    FollowOnScorecard? FollowOn = null);
 
 /// <summary>
 /// The projection test: can a pattern, alone or paired with one other, place a stock's
@@ -85,7 +87,7 @@ public static class ProjectionTest
     internal sealed record Test(int Combo, DateTime Origin, DateTime Target, bool Hit, bool BaselineHit, bool QuarterEnd, bool? Earnings);
 
     public static ProjectionScorecard Run(ProjectionInput input) =>
-        Score(Tests(input), ProjectionPatterns.Combinations());
+        Score(Tests(input), ProjectionPatterns.Combinations()) with { FollowOn = FollowOnTest.Run(input) };
 
     /// <summary>Every individual test, before scoring. Internal so the no-lookahead test can compare runs.</summary>
     internal static List<Test> Tests(ProjectionInput input)
