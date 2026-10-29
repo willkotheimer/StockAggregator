@@ -42,6 +42,7 @@ builder.Services.AddSingleton<AnalyticsRollupService>();
 builder.Services.AddSingleton<HistoricalBackfillService>();
 builder.Services.AddSingleton<SnapshotRunner>();
 builder.Services.AddSingleton<ISnapshotRunner>(sp => sp.GetRequiredService<SnapshotRunner>());
+builder.Services.AddSingleton<ThesisLedgerRecorder>();
 builder.Services.AddSingleton<DailyDigestRunner>();
 builder.Services.AddSingleton<EarningsDateFetcher>();
 builder.Services.AddSingleton<EarningsRepository>();

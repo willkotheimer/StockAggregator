@@ -22,4 +22,9 @@ public sealed class ProjectionsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<ProjectionScorecard>> Get(CancellationToken cancellationToken = default) =>
         Ok(await _scorecard.GetAsync(cancellationToken));
+
+    /// <summary>Today's score and status for every variant of every thesis, flat. The Functions app stores it daily.</summary>
+    [HttpGet("ledger")]
+    public async Task<ActionResult<IReadOnlyList<ThesisLedgerEntry>>> GetLedger(CancellationToken cancellationToken = default) =>
+        Ok(ThesisLedger.Entries(await _scorecard.GetAsync(cancellationToken)));
 }

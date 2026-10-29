@@ -19,6 +19,8 @@ public sealed record DigestRunResult(bool Sent, string Message);
 ///      market is closed — a holiday sends nothing)
 ///   2. ask the web app for the email (GET /api/digest), where all analysis and wording live
 ///   3. send it through Azure Communication Services Email
+///   4. store the day's thesis scores (dbo.ThesisLedger) — after the send, and never
+///      allowed to fail it
 ///
 /// Sending authenticates with the Function App's managed identity (the Azure CLI login
 /// locally), the same way the SQL connection does, so there is no email secret anywhere.
@@ -31,6 +33,7 @@ public sealed class DailyDigestRunner
 
     private readonly QuoteFetcher _fetcher;
     private readonly QuoteRepository _repository;
+    private readonly ThesisLedgerRecorder _ledger;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IConfiguration _config;
     private readonly ILogger<DailyDigestRunner> _logger;
@@ -38,12 +41,14 @@ public sealed class DailyDigestRunner
     public DailyDigestRunner(
         QuoteFetcher fetcher,
         QuoteRepository repository,
+        ThesisLedgerRecorder ledger,
         IHttpClientFactory httpClientFactory,
         IConfiguration config,
         ILogger<DailyDigestRunner> logger)
     {
         _fetcher = fetcher;
         _repository = repository;
+        _ledger = ledger;
         _httpClientFactory = httpClientFactory;
         _config = config;
         _logger = logger;
@@ -77,6 +82,15 @@ public sealed class DailyDigestRunner
         await SendAsync(digest, recipients, cancellationToken);
 
         _logger.LogInformation("Sent digest {Subject} to {Count} recipient(s).", digest.Subject, recipients.Count);
+
+        try
+        {
+            await _ledger.RecordAsync(cancellationToken);
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning(ex, "Storing the thesis ledger failed; the digest was still sent.");
+        }
         return new DigestRunResult(true, $"Sent \"{digest.Subject}\" to {recipients.Count} recipient(s).");
     }
 
