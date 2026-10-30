@@ -22,3 +22,18 @@ public sealed class EtfGroupOptions
 
     public List<EtfGroup> Groups { get; set; } = new();
 }
+
+/// <summary>
+/// Funds outside the groups (bound from the "RotationDestinations" config array) where
+/// money leaving stocks can go: defensives, bonds, gold. Read only by the follow-on test;
+/// the email and the dashboard leave them out, so they never change what readers see.
+/// They still need to be in the Functions app's StockSymbols to get daily prices.
+/// </summary>
+public sealed class RotationDestinationOptions
+{
+    public const string SectionName = "RotationDestinations";
+
+    public List<string> Symbols { get; set; } = new();
+
+    public bool Contains(string symbol) => Symbols.Contains(symbol, StringComparer.OrdinalIgnoreCase);
+}

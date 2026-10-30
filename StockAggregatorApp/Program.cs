@@ -15,6 +15,8 @@ builder.Services.AddControllers();
 // Bind the ordered ETF groupings from the "EtfGroups" config array.
 builder.Services.Configure<EtfGroupOptions>(options =>
     options.Groups = builder.Configuration.GetSection(EtfGroupOptions.SectionName).Get<List<EtfGroup>>() ?? new());
+builder.Services.Configure<RotationDestinationOptions>(options =>
+    options.Symbols = builder.Configuration.GetSection(RotationDestinationOptions.SectionName).Get<List<string>>() ?? new());
 
 builder.Services.AddSingleton<SqlConnectionFactory>();
 builder.Services.AddScoped<IQuoteReadRepository, QuoteReadRepository>();

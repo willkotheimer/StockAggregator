@@ -8,7 +8,8 @@ namespace StockAggregatorApp.Services;
 /// Pivots raw quote rows into the week grid: builds the ordered snapshot columns
 /// (date + capture time), then rows grouped by ETF — each ETF row followed by its
 /// member symbols, in the order configured. Symbols captured but not listed under
-/// any ETF are collected into a trailing "Other" group.
+/// any ETF are collected into a trailing "Other" group, except rotation destinations,
+/// which are captured for the follow-on test only.
 /// </summary>
 public sealed class QuoteQueryService : IQuoteQueryService
 {
@@ -27,11 +28,16 @@ public sealed class QuoteQueryService : IQuoteQueryService
 
     private readonly IQuoteReadRepository _repository;
     private readonly IReadOnlyList<EtfGroup> _groups;
+    private readonly RotationDestinationOptions _destinations;
 
-    public QuoteQueryService(IQuoteReadRepository repository, IOptions<EtfGroupOptions> groupOptions)
+    public QuoteQueryService(
+        IQuoteReadRepository repository,
+        IOptions<EtfGroupOptions> groupOptions,
+        IOptions<RotationDestinationOptions> destinationOptions)
     {
         _repository = repository;
         _groups = groupOptions.Value.Groups;
+        _destinations = destinationOptions.Value;
     }
 
     public async Task<WeekQuotesResponse> GetWeekAsync(int tradingDays = 5, CancellationToken cancellationToken = default)
@@ -137,7 +143,7 @@ public sealed class QuoteQueryService : IQuoteQueryService
 
         // Any captured symbols not covered by a group go into a trailing "Other" bucket.
         var leftovers = cellsBySymbol.Keys
-            .Where(s => !placed.Contains(s))
+            .Where(s => !placed.Contains(s) && !_destinations.Contains(s))
             .OrderBy(s => s, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
