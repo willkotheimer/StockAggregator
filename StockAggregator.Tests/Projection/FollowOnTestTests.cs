@@ -16,11 +16,21 @@ public class FollowOnTestTests
 
     private static readonly EtfGroup[] Groups = Funds.Select(f => new EtfGroup { Etf = f, Members = [] }).ToArray();
 
-    /// <summary>
-    /// Seeded random walks for the funds on weekdays from 2020. With <paramref name="planted"/>,
-    /// SMH has an occasional sharp drop and XLK has its own two trading days later.
-    /// </summary>
-    private static Dictionary<string, IReadOnlyList<DailyClose>> Walks(int days, bool planted, int seed = 11)
+    private enum Plant
+    {
+        None,
+        /// <summary>SMH has an occasional sharp drop; XLK has its own two trading days later.</summary>
+        SmhThenXlk,
+        /// <summary>Every fund drops together, then every fund bounces two days later: all boats.</summary>
+        MarketBounce,
+        /// <summary>SMH alone drops; XLE alone jumps two days later: money moving between funds.</summary>
+        MoneyMoves,
+        /// <summary>SMH alone drops; TLT (a destination, not a stock fund) jumps two days later.</summary>
+        IntoBonds,
+    }
+
+    /// <summary>Seeded random walks for the funds (plus TLT) on weekdays from 2020, with one planted behavior.</summary>
+    private static Dictionary<string, IReadOnlyList<DailyClose>> Walks(int days, Plant plant, int seed = 11)
     {
         var rng = new Random(seed);
         var dates = new List<DateTime>();
@@ -29,27 +39,40 @@ public class FollowOnTestTests
             if (d.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday)) dates.Add(d);
         }
 
-        var shocks = Funds.ToDictionary(f => f, _ => new double[days]);
-        foreach (var f in Funds)
+        string[] symbols = [.. Funds, "TLT"];
+        var shocks = symbols.ToDictionary(f => f, _ => new double[days]);
+        foreach (var f in symbols)
         {
             for (var i = 0; i < days; i++)
             {
                 shocks[f][i] = (rng.NextDouble() + rng.NextDouble() + rng.NextDouble() - 1.5) * 0.02;
             }
         }
-        if (planted)
+
+        for (var i = 0; plant != Plant.None && i + 2 < days; i++)
         {
-            for (var i = 0; i + 2 < days; i++)
+            if (rng.NextDouble() >= 0.03) continue;
+            switch (plant)
             {
-                if (rng.NextDouble() < 0.03)
-                {
+                case Plant.SmhThenXlk:
                     shocks["SMH"][i] = -0.06;
                     shocks["XLK"][i + 2] = -0.06;
-                }
+                    break;
+                case Plant.MarketBounce:
+                    foreach (var f in Funds) { shocks[f][i] = -0.06; shocks[f][i + 2] = 0.06; }
+                    break;
+                case Plant.MoneyMoves:
+                    shocks["SMH"][i] = -0.06;
+                    shocks["XLE"][i + 2] = 0.06;
+                    break;
+                case Plant.IntoBonds:
+                    shocks["SMH"][i] = -0.06;
+                    shocks["TLT"][i + 2] = 0.06;
+                    break;
             }
         }
 
-        return Funds.ToDictionary(f => f, f =>
+        return symbols.ToDictionary(f => f, f =>
         {
             var price = 100.0;
             var series = new List<DailyClose>();
@@ -62,20 +85,26 @@ public class FollowOnTestTests
         });
     }
 
-    private static ProjectionInput Input(Dictionary<string, IReadOnlyList<DailyClose>> history) =>
-        new(Groups, history, new Dictionary<string, IReadOnlyList<DateTime>>());
+    /// <summary>TLT's history is always there; it only counts when named a destination.</summary>
+    private static ProjectionInput Input(Dictionary<string, IReadOnlyList<DailyClose>> history, bool withBonds = false) =>
+        new(Groups, history, new Dictionary<string, IReadOnlyList<DateTime>>(), withBonds ? ["TLT"] : null);
 
-    [Fact]
-    public void NeverLooksAhead_CuttingOffTheFutureLeavesEarlierGuessesUnchanged()
+    private static bool Has(IEnumerable<FollowOnLink> links, string leader, bool leaderUp, string follower, bool followerUp) =>
+        links.Any(l => l.Leader == leader && l.LeaderUp == leaderUp && l.Follower == follower && l.FollowerUp == followerUp);
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NeverLooksAhead_CuttingOffTheFutureLeavesEarlierGuessesUnchanged(bool relative)
     {
-        var full = Walks(1300, planted: true);
+        var full = Walks(1300, Plant.MoneyMoves);
         var cutoff = full["SMH"][1000].TradingDate;
         var truncated = full.ToDictionary(
             kv => kv.Key,
             kv => (IReadOnlyList<DailyClose>)kv.Value.Where(b => b.TradingDate <= cutoff).ToList());
 
-        var fromFull = FollowOnTest.Tests(Input(full)).Where(t => t.Target <= cutoff).ToList();
-        var fromTruncated = FollowOnTest.Tests(Input(truncated)).ToList();
+        var fromFull = FollowOnTest.Tests(Input(full, withBonds: true), relative).Where(t => t.Target <= cutoff).ToList();
+        var fromTruncated = FollowOnTest.Tests(Input(truncated, withBonds: true), relative).ToList();
 
         Assert.NotEmpty(fromFull);
         Assert.Equal(fromTruncated, fromFull);
@@ -84,7 +113,7 @@ public class FollowOnTestTests
     [Fact]
     public void FindsAPlantedLink_AndItsGuessesBeatNoPattern()
     {
-        var card = FollowOnTest.Run(Input(Walks(1300, planted: true)));
+        var card = FollowOnTest.Run(Input(Walks(1300, Plant.SmhThenXlk)));
 
         var link = Assert.Single(card.Links, l => l is { Leader: "SMH", LeaderUp: false, Follower: "XLK", FollowerUp: false, Days: 5 });
         Assert.True(link.Rate > 0.8, $"rate {link.Rate:P0}");
@@ -94,13 +123,76 @@ public class FollowOnTestTests
         Assert.True(five.All.Edge > 0.3, $"edge {five.All.Edge:P0} over {five.All.Tests} guesses");
     }
 
-    [Fact]
-    public void FindsNothingToPass_InNoise()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FindsNothingToPass_InNoise(bool relative)
     {
-        var card = FollowOnTest.Run(Input(Walks(1300, planted: false)));
+        var card = FollowOnTest.Run(Input(Walks(1300, Plant.None), withBonds: true), relative);
 
         Assert.All(card.Windows, w => Assert.False(w.Passed, $"{w.Days}-day passed on noise"));
         Assert.DoesNotContain(card.Links, l => l.Rate - l.BaseRate > 0.3);
+    }
+
+    [Fact]
+    public void MarketWideBounce_FoolsRaw_ButNotRelative()
+    {
+        // All boats: everything drops, then everything bounces. Raw sees "SMH down, then XLK up".
+        var history = Walks(1300, Plant.MarketBounce);
+        var raw = FollowOnTest.Run(Input(history));
+        var relative = FollowOnTest.Run(Input(history), relative: true);
+
+        Assert.True(Has(raw.Links, "SMH", false, "XLK", true), "raw should find the bounce");
+        Assert.False(Has(relative.Links, "SMH", false, "XLK", true), "relative should see nothing move between funds");
+
+        // And the self-link gives it away: SMH bounces after its own drops as often as XLK does.
+        var self = Assert.Single(raw.SelfLinks!, l => l is { Leader: "SMH", LeaderUp: false, FollowerUp: true, Days: 5 });
+        Assert.True(self.Rate > 0.8, $"self rate {self.Rate:P0}");
+    }
+
+    [Fact]
+    public void MoneyMovingBetweenFunds_IsFoundByRelative()
+    {
+        var relative = FollowOnTest.Run(Input(Walks(1300, Plant.MoneyMoves)), relative: true);
+
+        Assert.True(Has(relative.Links, "SMH", false, "XLE", true));
+        Assert.True(relative.Windows.Single(w => w.Days == 5).All.Edge > 0.2);
+        Assert.True(relative.Relative);
+    }
+
+    [Fact]
+    public void Destinations_JoinAsFollowers_OnlyWhenNamed()
+    {
+        var history = Walks(1300, Plant.IntoBonds);
+
+        Assert.True(Has(FollowOnTest.Run(Input(history, withBonds: true), relative: true).Links, "SMH", false, "TLT", true));
+        Assert.DoesNotContain(FollowOnTest.Run(Input(history)).Links, l => l.Follower == "TLT" || l.Leader == "TLT");
+    }
+
+    [Fact]
+    public void Destinations_StayOutOfTheMarketAverage()
+    {
+        // A huge TLT day must not move the stock funds' average and make them look big against it.
+        var history = Walks(400, Plant.None);
+        var day = history["TLT"][380].TradingDate;
+        var before = FollowOnTest.BigDayFunds(Input(history, withBonds: true), day, relative: true);
+        history["TLT"] = history["TLT"].Select((b, i) => i < 380 ? b : new DailyClose(b.TradingDate, b.Close * 1.5m)).ToList();
+
+        var after = FollowOnTest.BigDayFunds(Input(history, withBonds: true), day, relative: true);
+
+        Assert.Contains("TLT", after);
+        Assert.Equal(before.Where(Funds.Contains), after.Where(Funds.Contains));
+    }
+
+    [Fact]
+    public void Destinations_AreNeverPricePatternSubjects()
+    {
+        var history = Walks(700, Plant.None);
+        var without = history.Where(kv => kv.Key != "TLT").ToDictionary(kv => kv.Key, kv => kv.Value);
+
+        Assert.Equal(
+            ProjectionTest.Tests(new ProjectionInput(Groups, without, new Dictionary<string, IReadOnlyList<DateTime>>())),
+            ProjectionTest.Tests(Input(history, withBonds: true)));
     }
 
     [Fact]

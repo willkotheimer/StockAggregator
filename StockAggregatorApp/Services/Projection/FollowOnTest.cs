@@ -52,7 +52,13 @@ public sealed record FollowOnScorecard(
     IReadOnlyList<FollowOnWindow> Windows,
     // Significant links on the full history, biggest lift over the base rate first.
     IReadOnlyList<FollowOnLink> Links,
-    IReadOnlyList<FollowOnOpen> Open);
+    IReadOnlyList<FollowOnOpen> Open,
+    // Each fund's link to itself (its own big day after its own big day), significant or not.
+    // Diagnostic only, never used to guess: a self-link as strong as the cross links says
+    // the "follow-on" is a bounce, not money moving between funds.
+    IReadOnlyList<FollowOnLink>? SelfLinks = null,
+    // Moves measured against the stock funds' average instead of on their own.
+    bool Relative = false);
 
 /// <summary>
 /// The follow-on test: within 5, 10 or 15 trading days of a big up or down day in one
@@ -76,6 +82,13 @@ public sealed record FollowOnScorecard(
 ///
 /// Leader big days are counted once per span: a second big day for the same fund and
 /// direction before the first one's span has closed is part of the same episode.
+///
+/// Two measures. Raw judges each fund's own daily move. Relative judges its move minus
+/// the average move of the stock funds (the groups' ETFs) that day, so a market-wide
+/// sell-off and bounce cancel out and what's left is one fund gaining on the rest:
+/// money moving, which is the rotation thesis itself. Rotation destinations (bonds,
+/// gold, defensives) join both universes as leaders and followers, but never the
+/// average they're measured against, so stocks-versus-safety stays visible.
 /// </summary>
 public static class FollowOnTest
 {
@@ -136,30 +149,37 @@ public static class FollowOnTest
         }
     }
 
-    public static FollowOnScorecard Run(ProjectionInput input)
+    public static FollowOnScorecard Run(ProjectionInput input, bool relative = false)
     {
-        var (tests, open, tallies, bases, calendar) = Sweep(input);
-        return Score(tests, open, tallies, bases, calendar);
+        var (tests, open, tallies, bases, calendar) = Sweep(input, relative);
+        return Score(tests, open, tallies, bases, calendar, relative);
     }
 
-    internal static List<Test> Tests(ProjectionInput input) => Sweep(input).Tests;
+    internal static List<Test> Tests(ProjectionInput input, bool relative = false) => Sweep(input, relative).Tests;
 
     /// <summary>The funds with a big day (either way) on <paramref name="date"/>. For tests.</summary>
-    internal static List<string> BigDayFunds(ProjectionInput input, DateTime date)
+    internal static List<string> BigDayFunds(ProjectionInput input, DateTime date, bool relative = false)
     {
-        var (funds, calendar, days) = Prepare(input);
+        var (funds, calendar, days) = Prepare(input, relative);
         var at = calendar.IndexOf(date.Date);
         return at < 0 ? [] : funds.Where(f => days[f].Move[at] != 0).ToList();
     }
 
-    /// <summary>The US-listed funds, the shared calendar of their trading days, and each fund's big days on it.</summary>
-    private static (List<string> Funds, List<DateTime> Calendar, Dictionary<string, FundDays> Days) Prepare(ProjectionInput input)
+    /// <summary>
+    /// The US-listed funds (stock funds, then destinations), the shared calendar of their
+    /// trading days, and each fund's big days on it.
+    /// </summary>
+    private static (List<string> Funds, List<DateTime> Calendar, Dictionary<string, FundDays> Days) Prepare(
+        ProjectionInput input, bool relative)
     {
-        var funds = input.Groups
-            .Select(g => g.Etf.Trim().ToUpperInvariant())
+        List<string> Usable(IEnumerable<string> symbols) => symbols
+            .Select(e => e.Trim().ToUpperInvariant())
             .Where(e => e.Length > 0 && DigestAnalysis.IsUsListing(e) && input.History.ContainsKey(e))
             .Distinct()
             .ToList();
+
+        var stockFunds = Usable(input.Groups.Select(g => g.Etf));
+        var funds = stockFunds.Concat(Usable(input.Destinations ?? [])).Distinct().ToList();
 
         var calendar = funds
             .SelectMany(f => input.History[f].Select(b => b.TradingDate.Date))
@@ -167,14 +187,46 @@ public static class FollowOnTest
             .Order()
             .ToList();
         var index = calendar.Select((d, i) => (d, i)).ToDictionary(x => x.d, x => x.i);
-        var days = funds.ToDictionary(f => f, f => BigDays(input.History[f], index, calendar.Count));
+        var returns = funds.ToDictionary(f => f, f => Returns(input.History[f], index, calendar.Count));
+
+        if (relative)
+        {
+            var market = Market(stockFunds.Select(f => returns[f]).ToList(), calendar.Count);
+            foreach (var f in funds)
+            {
+                var r = returns[f];
+                for (var t = 0; t < r.Length; t++)
+                {
+                    r[t] = r[t] is { } x && market[t] is { } m ? x - m : null;
+                }
+            }
+        }
+
+        var days = funds.ToDictionary(f => f, f => BigDays(returns[f]));
         return (funds, calendar, days);
     }
 
-    private static (List<Test> Tests, List<FollowOnOpen> Open, Dictionary<LinkKey, Tally> Tallies,
-        Dictionary<BaseKey, Tally> Bases, IReadOnlyList<DateTime> Calendar) Sweep(ProjectionInput input)
+    /// <summary>The stock funds' average daily move, on days at least half of them traded.</summary>
+    private static double?[] Market(IReadOnlyList<double?[]> stockReturns, int n)
     {
-        var (funds, calendar, days) = Prepare(input);
+        var market = new double?[n];
+        var needed = Math.Max(1, (stockReturns.Count + 1) / 2);
+        for (var t = 0; t < n; t++)
+        {
+            var (sum, count) = (0.0, 0);
+            foreach (var r in stockReturns)
+            {
+                if (r[t] is { } x) { sum += x; count++; }
+            }
+            if (count >= needed) market[t] = sum / count;
+        }
+        return market;
+    }
+
+    private static (List<Test> Tests, List<FollowOnOpen> Open, Dictionary<LinkKey, Tally> Tallies,
+        Dictionary<BaseKey, Tally> Bases, IReadOnlyList<DateTime> Calendar) Sweep(ProjectionInput input, bool relative)
+    {
+        var (funds, calendar, days) = Prepare(input, relative);
 
         var tallies = new Dictionary<LinkKey, Tally>();
         var bases = new Dictionary<BaseKey, Tally>();
@@ -208,7 +260,8 @@ public static class FollowOnTest
                 {
                     foreach (var f in funds)
                     {
-                        if (f == leader || !days[f].FullyKnown(s, w)) continue;
+                        // Self-links are tallied (the bounce check) but never guessed from.
+                        if (!days[f].FullyKnown(s, w)) continue;
                         foreach (sbyte m in (sbyte[])[1, -1])
                         {
                             Add(tallies, new LinkKey(leader, lm, f, m, w), days[f].Happened(s, w, m));
@@ -279,36 +332,50 @@ public static class FollowOnTest
         return pValue <= MaxPValue;
     }
 
-    /// <summary>
-    /// Each day's move judged against the fund's own year before: z = (r - mean) / sd of
-    /// the prior <see cref="VolatilityDays"/> daily log returns. Mapped onto the shared
-    /// calendar; days the fund has no bar (or not enough history) stay unjudged.
-    /// </summary>
-    private static FundDays BigDays(IReadOnlyList<DailyClose> series, Dictionary<DateTime, int> index, int n)
+    /// <summary>ln(close / previous close) on each calendar day the fund traded; null otherwise.</summary>
+    private static double?[] Returns(IReadOnlyList<DailyClose> series, Dictionary<DateTime, int> index, int n)
     {
-        var move = new sbyte[n];
-        var judged = new bool[n];
-        var returns = new List<double>(series.Count);
-
+        var returns = new double?[n];
         for (var i = 1; i < series.Count; i++)
         {
             var (from, to) = (series[i - 1].Close, series[i].Close);
-            if (from <= 0m || to <= 0m) continue;
-            var r = Math.Log((double)(to / from));
+            if (from > 0m && to > 0m && index.TryGetValue(series[i].TradingDate.Date, out var at))
+            {
+                returns[at] = Math.Log((double)(to / from));
+            }
+        }
+        return returns;
+    }
 
-            var window = returns.Count > VolatilityDays ? returns.GetRange(returns.Count - VolatilityDays, VolatilityDays) : returns;
+    /// <summary>
+    /// Each day's move judged against the fund's own year before: z = (r - mean) / sd of
+    /// the prior <see cref="VolatilityDays"/> moves. Days with no move (or not enough
+    /// history) stay unjudged.
+    /// </summary>
+    private static FundDays BigDays(double?[] returns)
+    {
+        var n = returns.Length;
+        var move = new sbyte[n];
+        var judged = new bool[n];
+        var past = new List<double>(n);
+
+        for (var t = 0; t < n; t++)
+        {
+            if (returns[t] is not { } r) continue;
+
+            var window = past.Count > VolatilityDays ? past.GetRange(past.Count - VolatilityDays, VolatilityDays) : past;
             if (window.Count >= MinVolatilitySamples)
             {
                 var mean = window.Average();
                 var sd = Math.Sqrt(window.Sum(x => (x - mean) * (x - mean)) / (window.Count - 1));
-                if (sd > 0 && index.TryGetValue(series[i].TradingDate.Date, out var at))
+                if (sd > 0)
                 {
                     var z = (r - mean) / sd;
-                    judged[at] = true;
-                    move[at] = z >= BigDayZ ? (sbyte)1 : z <= -BigDayZ ? (sbyte)-1 : (sbyte)0;
+                    judged[t] = true;
+                    move[t] = z >= BigDayZ ? (sbyte)1 : z <= -BigDayZ ? (sbyte)-1 : (sbyte)0;
                 }
             }
-            returns.Add(r);
+            past.Add(r);
         }
 
         var known = new int[n];
@@ -347,7 +414,8 @@ public static class FollowOnTest
         List<FollowOnOpen> open,
         Dictionary<LinkKey, Tally> tallies,
         Dictionary<BaseKey, Tally> bases,
-        IReadOnlyList<DateTime> calendar)
+        IReadOnlyList<DateTime> calendar,
+        bool relative)
     {
         var asOf = calendar.Count > 0 ? calendar[^1] : DateTime.MinValue;
         var first = tests.Count > 0 ? tests.Min(t => t.Origin) : (DateTime?)null;
@@ -375,16 +443,27 @@ public static class FollowOnTest
             .ToDictionary(g => g.Key, g => Hits(g));
 
         var links = new List<FollowOnLink>();
+        var selfLinks = new List<FollowOnLink>();
         foreach (var (key, link) in tallies)
         {
-            if (!bases.TryGetValue(new BaseKey(key.Follower, key.FollowerMove, key.Days), out var baseline)
-                || !IsSignificant(link, baseline, out var p))
+            if (!bases.TryGetValue(new BaseKey(key.Follower, key.FollowerMove, key.Days), out var baseline))
             {
                 continue;
             }
-            links.Add(new FollowOnLink(key.Leader, key.LeaderMove > 0, key.Follower, key.FollowerMove > 0, key.Days,
+
+            var significant = IsSignificant(link, baseline, out var p);
+            var row = new FollowOnLink(key.Leader, key.LeaderMove > 0, key.Follower, key.FollowerMove > 0, key.Days,
                 link.Events, link.Hits, link.Rate, baseline.Rate, p,
-                guessesByLink.GetValueOrDefault(key, new HitScore(0, null, null))));
+                guessesByLink.GetValueOrDefault(key, new HitScore(0, null, null)));
+
+            if (key.Leader == key.Follower)
+            {
+                if (link.Events >= MinEvents) selfLinks.Add(row);
+            }
+            else if (significant)
+            {
+                links.Add(row);
+            }
         }
 
         return new FollowOnScorecard(
@@ -406,7 +485,12 @@ public static class FollowOnTest
             Open: open
                 .OrderByDescending(o => o.Rate - o.BaseRate)
                 .ThenBy(o => o.Leader, StringComparer.Ordinal).ThenBy(o => o.Follower, StringComparer.Ordinal)
-                .ToList());
+                .ToList(),
+            SelfLinks: selfLinks
+                .OrderBy(l => l.Leader, StringComparer.Ordinal)
+                .ThenBy(l => l.LeaderUp).ThenBy(l => l.FollowerUp).ThenBy(l => l.Days)
+                .ToList(),
+            Relative: relative);
     }
 
     // The baseline for each guess is the base rate it was made against: what knowing nothing expects.

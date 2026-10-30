@@ -40,6 +40,7 @@ public sealed class DigestQueryService : IDigestQueryService
     private readonly IDailyOhlcReadRepository _ohlc;
     private readonly IAnalyticsReadRepository _rollup;
     private readonly IReadOnlyList<EtfGroup> _groups;
+    private readonly RotationDestinationOptions _destinations;
     private readonly ProjectionScorecardCache _scorecard;
     private readonly ILogger<DigestQueryService> _logger;
     private readonly string _dashboardUrl;
@@ -49,6 +50,7 @@ public sealed class DigestQueryService : IDigestQueryService
         IDailyOhlcReadRepository ohlc,
         IAnalyticsReadRepository rollup,
         IOptions<EtfGroupOptions> groupOptions,
+        IOptions<RotationDestinationOptions> destinationOptions,
         ProjectionScorecardCache scorecard,
         IConfiguration config,
         ILogger<DigestQueryService> logger)
@@ -59,6 +61,7 @@ public sealed class DigestQueryService : IDigestQueryService
         _ohlc = ohlc;
         _rollup = rollup;
         _groups = groupOptions.Value.Groups;
+        _destinations = destinationOptions.Value;
         _dashboardUrl = config["DashboardUrl"] ?? DefaultDashboardUrl;
     }
 
@@ -81,9 +84,10 @@ public sealed class DigestQueryService : IDigestQueryService
 
         var health = await HealthAsync(snapshots, official, recent, tradingDate, cancellationToken);
 
-        // The latest snapshot of the day for each symbol is "now".
+        // The latest snapshot of the day for each symbol is "now". Rotation destinations
+        // are captured for the follow-on test, not for the email's own signals.
         var live = snapshots
-            .Where(q => q.Price is > 0m)
+            .Where(q => q.Price is > 0m && !_destinations.Contains(q.Symbol))
             .GroupBy(q => q.Symbol, StringComparer.OrdinalIgnoreCase)
             .Select(g => g.OrderBy(q => q.CapturedAtUtc).Last())
             .ToDictionary(

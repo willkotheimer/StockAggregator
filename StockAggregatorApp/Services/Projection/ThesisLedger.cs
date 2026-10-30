@@ -50,6 +50,7 @@ public static class ThesisLedger
 {
     public const string PricePattern = "price-pattern";
     public const string FollowOn = "follow-on";
+    public const string FollowOnRelative = "follow-on-relative";
 
     public const double CloseEdge = 0.05;
     private const int CloseHalfTests = 30;
@@ -69,6 +70,12 @@ public static class ThesisLedger
         {
             entries.AddRange(f.Windows.Select(w => Entry(
                 f.AsOf, FollowOn, $"{w.Days}d", $"Within {w.Days} days of another fund's big day",
+                w.All, w.Older, w.Newer, w.Passed, version)));
+        }
+        if (card.FollowOnRelative is { } r)
+        {
+            entries.AddRange(r.Windows.Select(w => Entry(
+                r.AsOf, FollowOnRelative, $"{w.Days}d", $"Within {w.Days} days of another fund's big day against the market",
                 w.All, w.Older, w.Newer, w.Passed, version)));
         }
 

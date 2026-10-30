@@ -50,7 +50,17 @@ public static class DigestNames
         ["ARGT"] = "Argentina stocks",
     };
 
-    public static bool IsFund(string symbol) => Groups.ContainsKey(symbol);
+    // Funds that aren't a group: where rotation money can go. Named whole, since
+    // "the fund for gold" reads worse than "the gold fund".
+    private static readonly Dictionary<string, string> OtherFunds = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["XLP"] = "the consumer staples stock fund",
+        ["XLU"] = "the utility stock fund",
+        ["TLT"] = "the long-term Treasury bond fund",
+        ["GLD"] = "the gold fund",
+    };
+
+    public static bool IsFund(string symbol) => Groups.ContainsKey(symbol) || OtherFunds.ContainsKey(symbol);
 
     /// <summary>"chip stocks" — the group a fund stands for.</summary>
     public static string GroupOf(string etf) =>
@@ -62,6 +72,11 @@ public static class DigestNames
     /// </summary>
     public static string Of(string symbol)
     {
+        if (OtherFunds.TryGetValue(symbol, out var fund))
+        {
+            return $"{fund} ({symbol})";
+        }
+
         if (Groups.TryGetValue(symbol, out var group))
         {
             // "chip stocks" -> "the chip stock fund"; "stocks outside the US" -> "the fund for stocks outside the US".

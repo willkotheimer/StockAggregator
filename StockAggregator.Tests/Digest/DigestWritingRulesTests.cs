@@ -76,7 +76,35 @@ public class DigestWritingRulesTests
             Pattern("Moved twice its normal day", 3356, 0.495, 0.494),
             Pattern("A steady climber", 1013, 0.583, 0.596),
         ],
-        FollowOn: FollowOn());
+        FollowOn: FollowOn(),
+        FollowOnRelative: FollowOnRelative());
+
+    /// <summary>The relative measure, again with the longest names (VEU, TLT) leading and following.</summary>
+    private static FollowOnScorecard FollowOnRelative()
+    {
+        var none = new HitScore(0, null, null);
+        return new FollowOnScorecard(
+            AsOf: Day,
+            FirstGuess: new DateTime(2022, 6, 1),
+            BigDayZ: 2.0,
+            SplitDate: new DateTime(2024, 6, 1),
+            All: new HitScore(1880, 0.264, 0.211),
+            Recent: none,
+            PriorRecent: none,
+            Windows:
+            [
+                new FollowOnWindow(5, new HitScore(900, 0.22, 0.15), none, none, Passed: false),
+                new FollowOnWindow(10, new HitScore(700, 0.30, 0.24), none, none, Passed: false),
+                new FollowOnWindow(15, new HitScore(280, 0.35, 0.31), none, none, Passed: false),
+            ],
+            Links:
+            [
+                new FollowOnLink("VEU", false, "TLT", true, 15, 37, 22, 0.595, 0.31, 0.0004, none),
+                new FollowOnLink("TLT", true, "VEU", false, 10, 29, 15, 0.517, 0.24, 0.001, none),
+            ],
+            Open: [],
+            Relative: true);
+    }
 
     /// <summary>The longest fund names (VEU, XLF) on purpose, so the sentence-length rule bites.</summary>
     private static FollowOnScorecard FollowOn()
@@ -179,6 +207,13 @@ public class DigestWritingRulesTests
         Assert.Contains("12 trading days are left", text);
         Assert.Contains("1 trading day is left", text);
         Assert.Contains("already happened this time", text);
+        Assert.Contains("against the average of the stock funds", text);
+        Assert.Contains("Measured that way, 26% of 1,880 guesses came true", text);
+        Assert.Contains("None of these has passed the full test yet.", text);
+        Assert.Contains("fell sharply behind the market 37 times", text);
+        Assert.Contains("The long-term Treasury bond fund (TLT) pulled ahead of the market within 15 days after 22 of them.", text);
+        Assert.Contains("pulled sharply ahead of the market 29 times", text);
+        Assert.Contains("fell behind the market within 10 days", text);
     }
 
     [Fact]

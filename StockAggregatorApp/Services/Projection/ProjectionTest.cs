@@ -8,7 +8,10 @@ public sealed record ProjectionInput(
     // Each symbol's full daily close series, ascending.
     IReadOnlyDictionary<string, IReadOnlyList<DailyClose>> History,
     // Earnings report dates (reported plus estimated) for symbols that have any; a missing symbol is "unknown".
-    IReadOnlyDictionary<string, IReadOnlyList<DateTime>> EarningsDates);
+    IReadOnlyDictionary<string, IReadOnlyList<DateTime>> EarningsDates,
+    // Funds outside the groups (bonds, gold, defensives) used only by the follow-on test,
+    // as places rotation money can go. Never price-pattern subjects.
+    IReadOnlyList<string>? Destinations = null);
 
 /// <summary>Hit rates on a set of tests: the pattern's, and the no-pattern baseline's on the same tests.</summary>
 public sealed record HitScore(int Tests, double? HitRate, double? BaselineHitRate)
@@ -41,7 +44,9 @@ public sealed record ProjectionScorecard(
     // Patterns with enough tests to list, best edge first.
     IReadOnlyList<PatternScore> Patterns,
     // Guesses that one fund's big day is followed by another's; see FollowOnTest.
-    FollowOnScorecard? FollowOn = null);
+    FollowOnScorecard? FollowOn = null,
+    // The same, with every move measured against the stock funds' average.
+    FollowOnScorecard? FollowOnRelative = null);
 
 /// <summary>
 /// The projection test: can a pattern, alone or paired with one other, place a stock's
@@ -87,7 +92,11 @@ public static class ProjectionTest
     internal sealed record Test(int Combo, DateTime Origin, DateTime Target, bool Hit, bool BaselineHit, bool QuarterEnd, bool? Earnings);
 
     public static ProjectionScorecard Run(ProjectionInput input) =>
-        Score(Tests(input), ProjectionPatterns.Combinations()) with { FollowOn = FollowOnTest.Run(input) };
+        Score(Tests(input), ProjectionPatterns.Combinations()) with
+        {
+            FollowOn = FollowOnTest.Run(input),
+            FollowOnRelative = FollowOnTest.Run(input, relative: true),
+        };
 
     /// <summary>Every individual test, before scoring. Internal so the no-lookahead test can compare runs.</summary>
     internal static List<Test> Tests(ProjectionInput input)
@@ -99,10 +108,13 @@ public static class ProjectionTest
         var events = new List<(DateTime End, int Combo, double Scaled)>();
         var candidates = new List<(DateTime Origin, int Combo, string Symbol, int Index, DateTime Target, double Actual, double Width)>();
 
+        var destinations = (input.Destinations ?? []).ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var (symbol, series) in input.History)
         {
             // Listings outside the US close on different days; leave them out, as the digest does.
-            if (!DigestAnalysis.IsUsListing(symbol) || series.Count < NormalMoveDays + HorizonDays + 1)
+            // Destinations are there for the follow-on test only.
+            if (!DigestAnalysis.IsUsListing(symbol) || destinations.Contains(symbol)
+                || series.Count < NormalMoveDays + HorizonDays + 1)
             {
                 continue;
             }

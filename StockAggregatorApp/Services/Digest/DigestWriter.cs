@@ -149,7 +149,12 @@ public static class DigestWriter
             Add(sections, "How the price guesses are doing", Guesses(scorecard));
             if (scorecard.FollowOn is { } followOn)
             {
-                Add(sections, "When one fund moves, what others do next", FollowOn(followOn));
+                var items = FollowOn(followOn);
+                if (scorecard.FollowOnRelative is { } relative)
+                {
+                    items.AddRange(FollowOnRelative(relative));
+                }
+                Add(sections, "When one fund moves, what others do next", items);
             }
         }
 
@@ -315,6 +320,54 @@ public static class DigestWriter
                         ? "It has already happened this time."
                         : o.DaysLeft == 1 ? "1 trading day is left." : $"{o.DaysLeft} trading days are left."));
             }
+        }
+
+        return items;
+    }
+
+    /// <summary>Links shown from the relative measure.</summary>
+    public const int TopRelativeLinks = 2;
+
+    /// <summary>
+    /// The same test with each fund measured against the stock funds' average, so a day
+    /// when everything moves together doesn't count: progress, and the strongest links.
+    /// </summary>
+    private static List<DigestItem> FollowOnRelative(FollowOnScorecard card)
+    {
+        var items = new List<DigestItem>
+        {
+            Item(
+                "We also check each fund against the average of the stock funds.",
+                "That way, a day when everything moves together does not count."),
+        };
+
+        if (card.All.HitRate is not { } all || card.All.BaselineHitRate is not { } allBase)
+        {
+            items.Add(Item("Measured that way, there are no guesses yet."));
+            return items;
+        }
+
+        var sentences = new List<string>
+        {
+            $"Measured that way, {Whole(all)} of {card.All.Tests.ToString("N0", En)} guesses came true, vs {Whole(allBase)} with no pattern.",
+        };
+        var passed = card.Windows.Where(w => w.Passed).Select(w => $"{w.Days}-day").ToList();
+        sentences.Add(passed.Count == 0
+            ? "None of these has passed the full test yet."
+            : $"The {string.Join(" and ", passed)} guesses have passed the full test.");
+        items.Add(new DigestItem(sentences));
+
+        var links = card.Links
+            .GroupBy(l => (l.Leader, l.LeaderUp, l.Follower, l.FollowerUp))
+            .Select(g => g.First())
+            .Take(TopRelativeLinks)
+            .ToList();
+        foreach (var l in links)
+        {
+            items.Add(Item(
+                $"{Cap(DigestNames.Of(l.Leader))} {(l.LeaderUp ? "pulled sharply ahead of" : "fell sharply behind")} the market {l.Events} times.",
+                $"{Cap(DigestNames.Of(l.Follower))} {(l.FollowerUp ? "pulled ahead of" : "fell behind")} the market within {l.Days} days after {l.Hits} of them.",
+                $"That is {Whole(l.Rate)}, vs {Whole(l.BaseRate)} in any {l.Days} days."));
         }
 
         return items;
