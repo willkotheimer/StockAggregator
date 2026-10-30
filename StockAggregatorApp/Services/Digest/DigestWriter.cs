@@ -147,6 +147,10 @@ public static class DigestWriter
         if (scorecard is not null)
         {
             Add(sections, "How the price guesses are doing", Guesses(scorecard));
+            if (scorecard.FollowOn is { } followOn)
+            {
+                Add(sections, "When one fund moves, what others do next", FollowOn(followOn));
+            }
         }
 
         return new DigestContent(
@@ -224,6 +228,102 @@ public static class DigestWriter
 
         return items;
     }
+
+    // Caps for the follow-on readout, so it stays a few lines.
+    public const int TopLinks = 3;
+    public const int TopOpen = 3;
+
+    /// <summary>
+    /// The follow-on test's readout: what a big day is, how the guesses are doing per
+    /// span, the strongest links, and the guesses still waiting on their outcome.
+    /// </summary>
+    private static List<DigestItem> FollowOn(FollowOnScorecard card)
+    {
+        var items = new List<DigestItem>
+        {
+            Item(
+                "When a fund has a big up or down day, we check what other funds do next.",
+                $"A big day is a move at least {Times(card.BigDayZ)} the fund's usual daily swing.",
+                "If a fund often had its own big day soon after, we guess it will again."),
+        };
+
+        if (card.FirstGuess is not { } first || card.All.HitRate is not { } all || card.All.BaselineHitRate is not { } allBase)
+        {
+            items.Add(Item("There is not enough history to make these guesses yet."));
+            return items;
+        }
+
+        var progress = new List<string>
+        {
+            $"Since {first.ToString("MMMM yyyy", En)}, we made {card.All.Tests.ToString("N0", En)} of these guesses.",
+            $"{Whole(all)} came true. With no pattern, we would expect {Whole(allBase)}.",
+        };
+        if (card.Recent.HitRate is { } recent && card.Recent.BaselineHitRate is { } recentBase)
+        {
+            progress.Add($"In the last 20 trading days, {Whole(recent)} came true, vs {Whole(recentBase)} with no pattern.");
+        }
+        items.Add(new DigestItem(progress));
+
+        foreach (var w in card.Windows.Where(w => w.All.Tests > 0))
+        {
+            items.Add(Item(
+                $"Within {w.Days} days: {Whole(w.All.HitRate ?? 0)} came true, vs {Whole(w.All.BaselineHitRate ?? 0)} with no pattern.",
+                $"That is over {w.All.Tests.ToString("N0", En)} guesses."));
+        }
+
+        var passed = card.Windows.Where(w => w.Passed).Select(w => $"{w.Days}-day").ToList();
+        items.Add(Item(
+            passed.Count == 0
+                ? "No span of days has passed the full test yet."
+                : $"The {string.Join(" and ", passed)} guesses have passed the full test.",
+            "Passing means beating no pattern by 10 points, in both the older and the newer years."));
+
+        // One line per leader and follower: the span with the biggest lift.
+        var links = card.Links
+            .GroupBy(l => (l.Leader, l.LeaderUp, l.Follower, l.FollowerUp))
+            .Select(g => g.First())
+            .Take(TopLinks)
+            .ToList();
+        if (links.Count > 0)
+        {
+            items.Add(Item("The strongest links so far:"));
+            foreach (var l in links)
+            {
+                items.Add(Item(
+                    $"{Cap(DigestNames.Of(l.Leader))} had {l.Events} big {UpDown(l.LeaderUp)} days.",
+                    $"{Cap(DigestNames.Of(l.Follower))} had a big {UpDown(l.FollowerUp)} day within {l.Days} days after {l.Hits} of them.",
+                    $"That is {Whole(l.Rate)}, vs {Whole(l.BaseRate)} in any {l.Days} days."));
+            }
+        }
+
+        var open = card.Open
+            .GroupBy(o => o.Follower)
+            .Select(g => g.First())
+            .Take(TopOpen)
+            .ToList();
+        if (open.Count > 0)
+        {
+            items.Add(Item("Guesses still open:"));
+            foreach (var o in open)
+            {
+                items.Add(Item(
+                    $"{Cap(DigestNames.Of(o.Leader))} had a big {UpDown(o.LeaderUp)} day on {o.Origin.ToString("MMM d", En)}.",
+                    $"Next we watch {DigestNames.Of(o.Follower)} for a big {UpDown(o.FollowerUp)} day.",
+                    $"After past days like that, it had one within {o.Days} days {Whole(o.Rate)} of the time.",
+                    $"In any {o.Days} days, that happens {Whole(o.BaseRate)} of the time.",
+                    o.AlreadyHappened
+                        ? "It has already happened this time."
+                        : o.DaysLeft == 1 ? "1 trading day is left." : $"{o.DaysLeft} trading days are left."));
+            }
+        }
+
+        return items;
+    }
+
+    private static string UpDown(bool up) => up ? "up" : "down";
+
+    /// <summary>2 -> "twice"; 2.5 -> "2.5 times".</summary>
+    private static string Times(double z) => z == 2 ? "twice" : $"{z.ToString("0.#", En)} times";
 
     /// <summary>0.4718 -> "47%".</summary>
     private static string Whole(double rate) => Math.Round(rate * 100, MidpointRounding.AwayFromZero).ToString("0", En) + "%";

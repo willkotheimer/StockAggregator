@@ -77,8 +77,8 @@ public sealed class ProjectionScorecardCache
             _entry = (key, scorecard);
 
             _logger.LogInformation(
-                "Projection scorecard computed in {Seconds:n1}s: {Patterns} patterns listed, as of {AsOf:yyyy-MM-dd}.",
-                timer.Elapsed.TotalSeconds, scorecard.Patterns.Count, scorecard.AsOf);
+                "Projection scorecard computed in {Seconds:n1}s: {Patterns} patterns listed, {FollowOnGuesses} follow-on guesses, as of {AsOf:yyyy-MM-dd}.",
+                timer.Elapsed.TotalSeconds, scorecard.Patterns.Count, scorecard.FollowOn?.All.Tests ?? 0, scorecard.AsOf);
             return scorecard;
         }
         finally
