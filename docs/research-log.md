@@ -48,7 +48,7 @@ more often than knowing nothing? Code: `ProjectionTest`, `ProjectionPatterns`. 3
 high while its group leads): +5.4 older, 0.0 newer. Windows that cross earnings land 42% vs 52%
 for the rest.
 
-### follow-on — big day in one fund, then another (since 2026-10-29)
+### follow-on — big day in one fund, then another (2026-10-29, pruned 2026-10-30)
 
 Within 5/10/15 trading days of one fund's big day (|z| ≥ 2 against its own past year), does
 another fund have its own big day more often than in any span that long? A link only makes guesses
@@ -69,7 +69,7 @@ a big *up* day 40% of the time and another big *down* day 42%, against a base of
 Both directions rise about equally, which is volatility clustering ("big days follow big days"), not
 direction. So part of the raw cross-fund edge is likely the same effect.
 
-### follow-on-relative — the rotation thesis (since 2026-10-29)
+### follow-on-relative — the rotation thesis (2026-10-29, pruned 2026-10-30)
 
 Same test, but each fund's daily move is its move **minus the stock funds' average** that day. A
 day when everything moves together cancels out; what's left is one fund gaining or losing ground
@@ -91,6 +91,28 @@ That one has an obvious story: energy up means fuel costs up, which hurts consum
 
 Relative self-links are also about symmetric (34% vs 35% after a big relative down day, base about 23%),
 so relative big days cluster too. That means relative links can still pick up some clustering.
+
+### Practice portfolios — forward only (since 2026-10-30)
+
+Not a thesis scored on hit rates, so it has no ledger rows. Eight fixed mixes each put in $250 every
+other Friday from Fri Oct 2, 2026, at real closes, in fractional shares. Nothing before Oct 2 counts,
+so last year's Sandisk and Micron runs can't flatter anyone. The leaderboard is in the email and at
+`GET /api/portfolios`. Code: `PaperPortfolios` (rules, pure) and `PaperPortfolioService` (prices).
+
+| # | Mix |
+|---|---|
+| 1 | 100% VOO |
+| 2 | 50% VOO, 50% SPAXX (4%/yr), with the SPAXX half all into Sandisk on any close below $1,300 and all back above $1,500 |
+| 3 | 50% VOO, 25% WMT, 25% XOM |
+| 4 | 50% VOO, 50% MU |
+| 5 | 50% VOO, 50% SMH |
+| 6 | 50% VOO, 25% LLY, 25% UNH |
+| 7 | 100% SNDK |
+| 8 | 50% VOO, 50% VUG |
+
+No state is stored: the rules are fixed, so replaying them over the real closes from Oct 2 gives the
+same result as tracking it live. Changing a rule later changes the history too, so record any change
+below.
 
 ## Observations across theses
 
@@ -131,3 +153,5 @@ so relative big days cluster too. That means relative links can still pick up so
 | 2026-10-29 | follow-on, follow-on-relative | Added self-links (tallied, never guessed from) | Bounce check: shows whether a "follow-on" is just the leader's own clustering |
 | 2026-10-29 | follow-on-relative | Added | The rotation thesis: moves measured against the stock funds' average |
 | 2026-10-29 | follow-on, follow-on-relative | Added destinations XLP, XLU, TLT, GLD | Places money can go on days every stock fund falls; kept out of the email and dashboard. Raw follow-on numbers will shift when their data arrives |
+| 2026-10-30 | follow-on, follow-on-relative | **Pruned**, with the destinations | The user's call: the 5/10/15-day fund follow-on is a stretch to act on. The raw version was mostly volatility clustering; relative was TooFewTests. Ledger rows through 2026-10-30 stay |
+| 2026-10-30 | practice portfolios | Added | Eight forward-only mixes compared against each other, from Oct 2 |

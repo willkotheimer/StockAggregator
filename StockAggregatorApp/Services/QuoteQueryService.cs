@@ -7,14 +7,11 @@ namespace StockAggregatorApp.Services;
 /// <summary>
 /// Pivots raw quote rows into the week grid: builds the ordered snapshot columns
 /// (date + capture time), then rows grouped by ETF — each ETF row followed by its
-/// member symbols, in the order configured. Symbols captured but not listed under
-/// any ETF are collected into a trailing "Other" group, except rotation destinations,
-/// which are captured for the follow-on test only.
+/// member symbols, in the order configured. Symbols captured but not listed under any
+/// ETF (the practice portfolios' extra symbols) are research data and left out.
 /// </summary>
 public sealed class QuoteQueryService : IQuoteQueryService
 {
-    private const string OtherGroup = "Other";
-
     // Canonical order of the daily capture times, by RunLabel. 11:30 CT is the fresh
     // fetch the midday digest saves just before it sends.
     private static readonly Dictionary<string, int> RunOrder = new(StringComparer.OrdinalIgnoreCase)
@@ -28,16 +25,11 @@ public sealed class QuoteQueryService : IQuoteQueryService
 
     private readonly IQuoteReadRepository _repository;
     private readonly IReadOnlyList<EtfGroup> _groups;
-    private readonly RotationDestinationOptions _destinations;
 
-    public QuoteQueryService(
-        IQuoteReadRepository repository,
-        IOptions<EtfGroupOptions> groupOptions,
-        IOptions<RotationDestinationOptions> destinationOptions)
+    public QuoteQueryService(IQuoteReadRepository repository, IOptions<EtfGroupOptions> groupOptions)
     {
         _repository = repository;
         _groups = groupOptions.Value.Groups;
-        _destinations = destinationOptions.Value;
     }
 
     public async Task<WeekQuotesResponse> GetWeekAsync(int tradingDays = 5, CancellationToken cancellationToken = default)
@@ -139,17 +131,6 @@ public sealed class QuoteQueryService : IQuoteQueryService
                 rows.Add(new SymbolRow($"{group.Etf}:{member}", member, IsEtf: false, group.Etf, Description: null, CellsFor(member)));
                 placed.Add(member);
             }
-        }
-
-        // Any captured symbols not covered by a group go into a trailing "Other" bucket.
-        var leftovers = cellsBySymbol.Keys
-            .Where(s => !placed.Contains(s) && !_destinations.Contains(s))
-            .OrderBy(s => s, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        foreach (var symbol in leftovers)
-        {
-            rows.Add(new SymbolRow($"{OtherGroup}:{symbol}", symbol, IsEtf: false, OtherGroup, Description: null, CellsFor(symbol)));
         }
 
         return new WeekQuotesResponse(snapshots, rows);

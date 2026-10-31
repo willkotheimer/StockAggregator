@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using StockAggregatorApp.Repositories;
+using StockAggregatorApp.Services.Portfolios;
 using StockAggregatorApp.Services.Projection;
 
 namespace StockAggregatorApp.Services.Digest;
@@ -40,8 +41,8 @@ public sealed class DigestQueryService : IDigestQueryService
     private readonly IDailyOhlcReadRepository _ohlc;
     private readonly IAnalyticsReadRepository _rollup;
     private readonly IReadOnlyList<EtfGroup> _groups;
-    private readonly RotationDestinationOptions _destinations;
     private readonly ProjectionScorecardCache _scorecard;
+    private readonly IPaperPortfolioService _portfolios;
     private readonly ILogger<DigestQueryService> _logger;
     private readonly string _dashboardUrl;
 
@@ -50,18 +51,18 @@ public sealed class DigestQueryService : IDigestQueryService
         IDailyOhlcReadRepository ohlc,
         IAnalyticsReadRepository rollup,
         IOptions<EtfGroupOptions> groupOptions,
-        IOptions<RotationDestinationOptions> destinationOptions,
         ProjectionScorecardCache scorecard,
+        IPaperPortfolioService portfolios,
         IConfiguration config,
         ILogger<DigestQueryService> logger)
     {
         _scorecard = scorecard;
+        _portfolios = portfolios;
         _logger = logger;
         _digest = digest;
         _ohlc = ohlc;
         _rollup = rollup;
         _groups = groupOptions.Value.Groups;
-        _destinations = destinationOptions.Value;
         _dashboardUrl = config["DashboardUrl"] ?? DefaultDashboardUrl;
     }
 
@@ -84,12 +85,18 @@ public sealed class DigestQueryService : IDigestQueryService
 
         var health = await HealthAsync(snapshots, official, recent, tradingDate, cancellationToken);
 
-        // The latest snapshot of the day for each symbol is "now". Rotation destinations
-        // are captured for the follow-on test, not for the email's own signals.
-        var live = snapshots
-            .Where(q => q.Price is > 0m && !_destinations.Contains(q.Symbol))
+        // The latest snapshot of the day for each symbol is "now".
+        var latest = snapshots
+            .Where(q => q.Price is > 0m)
             .GroupBy(q => q.Symbol, StringComparer.OrdinalIgnoreCase)
             .Select(g => g.OrderBy(q => q.CapturedAtUtc).Last())
+            .ToList();
+
+        // The email's own signals cover the configured groups only. Anything else captured
+        // (the practice portfolios' extra symbols) is for the portfolios alone.
+        var grouped = symbols.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var live = latest
+            .Where(q => grouped.Contains(q.Symbol))
             .ToDictionary(
                 q => q.Symbol,
                 q => new LiveQuote(q.Symbol, q.Price!.Value, q.ChangePct, q.DayHigh, q.DayLow, q.PreviousClose, q.CapturedAtUtc),
@@ -103,8 +110,25 @@ public sealed class DigestQueryService : IDigestQueryService
 
         var input = new DigestInput(tradingDate, _groups, live, Stitch(official, recent));
         var signals = DigestAnalysis.Compute(input);
-        var content = DigestWriter.Write(signals, health, await ScorecardAsync(cancellationToken));
+        var prices = latest.ToDictionary(q => q.Symbol, q => q.Price!.Value, StringComparer.OrdinalIgnoreCase);
+        var content = DigestWriter.Write(
+            signals, health, await ScorecardAsync(cancellationToken), await PortfoliosAsync(tradingDate, prices, cancellationToken));
         return Respond(tradingDate, true, content, signals, includeDataCheck);
+    }
+
+    /// <summary>Like the projection readout, the leaderboard is a bonus: a failure leaves it out, not the email.</summary>
+    private async Task<PortfolioLeaderboard?> PortfoliosAsync(
+        DateTime tradingDate, IReadOnlyDictionary<string, decimal> prices, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _portfolios.GetAsync(tradingDate, prices, cancellationToken);
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning(ex, "Practice portfolios unavailable; sending the digest without them.");
+            return null;
+        }
     }
 
     /// <summary>

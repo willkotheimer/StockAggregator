@@ -17,7 +17,6 @@ public sealed class ProjectionScorecardCache
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IReadOnlyList<EtfGroup> _groups;
-    private readonly IReadOnlyList<string> _destinations;
     private readonly ILogger<ProjectionScorecardCache> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private (DateTime Key, ProjectionScorecard Scorecard)? _entry;
@@ -25,12 +24,10 @@ public sealed class ProjectionScorecardCache
     public ProjectionScorecardCache(
         IServiceScopeFactory scopeFactory,
         IOptions<EtfGroupOptions> groupOptions,
-        IOptions<RotationDestinationOptions> destinationOptions,
         ILogger<ProjectionScorecardCache> logger)
     {
         _scopeFactory = scopeFactory;
         _groups = groupOptions.Value.Groups;
-        _destinations = destinationOptions.Value.Symbols;
         _logger = logger;
     }
 
@@ -59,7 +56,6 @@ public sealed class ProjectionScorecardCache
             var timer = Stopwatch.StartNew();
             var symbols = _groups
                 .SelectMany(g => g.Members.Prepend(g.Etf))
-                .Concat(_destinations)
                 .Select(s => s.Trim().ToUpperInvariant())
                 .Where(s => s.Length > 0)
                 .Distinct()
@@ -77,12 +73,12 @@ public sealed class ProjectionScorecardCache
                 kv => EarningsCalendar.WithEstimates(kv.Value, earliest),
                 StringComparer.OrdinalIgnoreCase);
 
-            var scorecard = ProjectionTest.Run(new ProjectionInput(_groups, history, earnings, _destinations));
+            var scorecard = ProjectionTest.Run(new ProjectionInput(_groups, history, earnings));
             _entry = (key, scorecard);
 
             _logger.LogInformation(
-                "Projection scorecard computed in {Seconds:n1}s: {Patterns} patterns listed, {FollowOnGuesses} follow-on guesses, as of {AsOf:yyyy-MM-dd}.",
-                timer.Elapsed.TotalSeconds, scorecard.Patterns.Count, scorecard.FollowOn?.All.Tests ?? 0, scorecard.AsOf);
+                "Projection scorecard computed in {Seconds:n1}s: {Patterns} patterns listed, as of {AsOf:yyyy-MM-dd}.",
+                timer.Elapsed.TotalSeconds, scorecard.Patterns.Count, scorecard.AsOf);
             return scorecard;
         }
         finally
