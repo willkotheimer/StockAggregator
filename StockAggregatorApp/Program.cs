@@ -4,6 +4,7 @@ using StockAggregatorApp.Data;
 using StockAggregatorApp.Repositories;
 using StockAggregatorApp.Services;
 using StockAggregatorApp.Services.Digest;
+using StockAggregatorApp.Services.Portfolios;
 using StockAggregatorApp.Services.Projection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,8 +16,6 @@ builder.Services.AddControllers();
 // Bind the ordered ETF groupings from the "EtfGroups" config array.
 builder.Services.Configure<EtfGroupOptions>(options =>
     options.Groups = builder.Configuration.GetSection(EtfGroupOptions.SectionName).Get<List<EtfGroup>>() ?? new());
-builder.Services.Configure<RotationDestinationOptions>(options =>
-    options.Symbols = builder.Configuration.GetSection(RotationDestinationOptions.SectionName).Get<List<string>>() ?? new());
 
 builder.Services.AddSingleton<SqlConnectionFactory>();
 builder.Services.AddScoped<IQuoteReadRepository, QuoteReadRepository>();
@@ -37,6 +36,7 @@ builder.Services.AddScoped<IProjectionReadRepository, ProjectionReadRepository>(
 // The projection test replays five years of history (~seconds of CPU), so its
 // scorecard is computed once per new trading day and shared.
 builder.Services.AddSingleton<ProjectionScorecardCache>();
+builder.Services.AddScoped<IPaperPortfolioService, PaperPortfolioService>();
 builder.Services.AddHostedService<ProjectionScorecardRefresher>();
 
 // The crawler screener scans every symbol's full history (~150s), so it's memoized

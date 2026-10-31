@@ -31,19 +31,20 @@ public class ThesisLedgerTests
     }
 
     [Fact]
-    public void Entries_CoverEveryPatternAndEverySpan_InOneShape()
+    public void Entries_OneRowPerPattern_StampedWithTheBuild()
     {
         var none = new HitScore(0, null, null);
         var split = new EventSplit(none, none);
         var day = new DateTime(2026, 10, 28);
         var card = new ProjectionScorecard(day, 20, day.AddYears(-1), none, none, split, split,
-            [new PatternScore("month-high", "At a 1-month high", Score(200, 0.01), Score(100, 0.01), Score(100, 0.01), split, split, false)],
-            new FollowOnScorecard(day, day.AddYears(-2), 2.0, day.AddYears(-1), none, none, none,
-                [new FollowOnWindow(5, Score(346, 0.10), Score(90, 0.12), Score(256, 0.096), false)], [], []));
+            [
+                new PatternScore("month-high", "At a 1-month high", Score(200, 0.01), Score(100, 0.01), Score(100, 0.01), split, split, false),
+                new PatternScore("big-move", "Moved twice its normal day", Score(346, 0.10), Score(90, 0.12), Score(256, 0.096), split, split, false),
+            ]);
 
         var entries = ThesisLedger.Entries(card, codeVersion: "1.0.0+abc123");
 
-        Assert.Equal(["price-pattern/month-high", "follow-on/5d"], entries.Select(e => $"{e.Thesis}/{e.Variant}"));
+        Assert.Equal(["price-pattern/month-high", "price-pattern/big-move"], entries.Select(e => $"{e.Thesis}/{e.Variant}"));
         Assert.Equal(["NoEdge", "Close"], entries.Select(e => e.Status));
         Assert.All(entries, e => Assert.Equal("1.0.0+abc123", e.CodeVersion));
     }

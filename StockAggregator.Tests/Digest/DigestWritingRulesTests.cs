@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using StockAggregatorApp.Models;
 using StockAggregatorApp.Services.Digest;
+using StockAggregatorApp.Services.Portfolios;
 using StockAggregatorApp.Services.Projection;
 using Xunit;
 
@@ -50,7 +51,8 @@ public class DigestWritingRulesTests
                 new FarFromHigh("TSLA", 10.1m, new DateTime(2024, 5, 1), null),
             ]),
         new DataHealth(["08:30 CT", "11:00 CT", "11:30 CT"], Day.AddHours(-2), "Success", Day.AddDays(-14), 9),
-        Scorecard());
+        Scorecard(),
+        Portfolios());
 
     private static PatternScore Pattern(string label, int tests, double hit, double baseline, bool passed = false)
     {
@@ -75,66 +77,29 @@ public class DigestWritingRulesTests
             Pattern("At a 1-month high", 2305, 0.505, 0.504, passed: true),
             Pattern("Moved twice its normal day", 3356, 0.495, 0.494),
             Pattern("A steady climber", 1013, 0.583, 0.596),
-        ],
-        FollowOn: FollowOn(),
-        FollowOnRelative: FollowOnRelative());
+        ]);
 
-    /// <summary>The relative measure, again with the longest names (VEU, TLT) leading and following.</summary>
-    private static FollowOnScorecard FollowOnRelative()
+    /// <summary>
+    /// A leaderboard with the longest portfolio name leading, a loss, and the swing in Sandisk,
+    /// so the sentence-length rule bites.
+    /// </summary>
+    private static PortfolioLeaderboard Portfolios()
     {
-        var none = new HitScore(0, null, null);
-        return new FollowOnScorecard(
-            AsOf: Day,
-            FirstGuess: new DateTime(2022, 6, 1),
-            BigDayZ: 2.0,
-            SplitDate: new DateTime(2024, 6, 1),
-            All: new HitScore(1880, 0.264, 0.211),
-            Recent: none,
-            PriorRecent: none,
-            Windows:
-            [
-                new FollowOnWindow(5, new HitScore(900, 0.22, 0.15), none, none, Passed: false),
-                new FollowOnWindow(10, new HitScore(700, 0.30, 0.24), none, none, Passed: false),
-                new FollowOnWindow(15, new HitScore(280, 0.35, 0.31), none, none, Passed: false),
-            ],
-            Links:
-            [
-                new FollowOnLink("VEU", false, "TLT", true, 15, 37, 22, 0.595, 0.31, 0.0004, none),
-                new FollowOnLink("TLT", true, "VEU", false, 10, 29, 15, 0.517, 0.24, 0.001, none),
-            ],
-            Open: [],
-            Relative: true);
-    }
+        PortfolioResult Result(int number, string name, decimal value, bool? swing = null) =>
+            new(number, name, 3, 750m, value, value - 750m, Math.Round((value - 750m) / 750m * 100m, 2), [], swing, null);
 
-    /// <summary>The longest fund names (VEU, XLF) on purpose, so the sentence-length rule bites.</summary>
-    private static FollowOnScorecard FollowOn()
-    {
-        var none = new HitScore(0, null, null);
-        return new FollowOnScorecard(
-            AsOf: Day,
-            FirstGuess: new DateTime(2022, 3, 1),
-            BigDayZ: 2.0,
-            SplitDate: new DateTime(2024, 6, 1),
-            All: new HitScore(4210, 0.412, 0.297),
-            Recent: new HitScore(61, 0.377, 0.301),
-            PriorRecent: none,
-            Windows:
+        return new PortfolioLeaderboard(
+            Start: new DateTime(2026, 10, 2),
+            ThroughClose: Day.AddDays(-1),
+            ValuedAt: Day,
+            ContributionAmount: 250m,
+            NextContribution: Day,
+            Ranked:
             [
-                new FollowOnWindow(5, new HitScore(1500, 0.31, 0.19), none, none, Passed: true),
-                new FollowOnWindow(10, new HitScore(1400, 0.42, 0.31), none, none, Passed: true),
-                new FollowOnWindow(15, new HitScore(1310, 0.50, 0.41), none, none, Passed: false),
-            ],
-            Links:
-            [
-                new FollowOnLink("XLF", false, "VEU", false, 15, 41, 29, 0.707, 0.402, 0.0001, none),
-                new FollowOnLink("XLF", false, "VEU", false, 10, 41, 25, 0.61, 0.32, 0.0002, none),
-                new FollowOnLink("SMH", true, "XLK", true, 5, 33, 15, 0.45, 0.17, 0.0003, none),
-            ],
-            Open:
-            [
-                new FollowOnOpen("XLF", false, Day.AddDays(-3), "VEU", false, 15, 12, false, 41, 29, 0.707, 0.402),
-                new FollowOnOpen("SMH", true, Day.AddDays(-1), "XLK", true, 5, 1, false, 33, 15, 0.45, 0.17),
-                new FollowOnOpen("SMH", true, Day.AddDays(-1), "XLC", true, 5, 4, true, 30, 12, 0.40, 0.18),
+                Result(6, "S&P 500 + Eli Lilly + UnitedHealth", 781.20m),
+                Result(1, "S&P 500 only", 752.10m),
+                Result(2, "S&P 500 + Sandisk swing", 731.95m, swing: true),
+                Result(7, "Sandisk only", 590.40m),
             ]);
     }
 
@@ -199,21 +164,10 @@ public class DigestWritingRulesTests
         Assert.Contains("of guesses landed", text);
         Assert.Contains("crossed a quarter end", text);
         Assert.Contains("crossed an earnings report", text);
-        Assert.Contains("twice the fund's usual daily swing", text);
-        Assert.Contains("Within 5 days:", text);
-        Assert.Contains("The 5-day and 10-day guesses have passed", text);
-        Assert.Contains("had 41 big down days", text);
-        Assert.Contains("Next we watch the fund for stocks outside the US (VEU)", text);
-        Assert.Contains("12 trading days are left", text);
-        Assert.Contains("1 trading day is left", text);
-        Assert.Contains("already happened this time", text);
-        Assert.Contains("against the average of the stock funds", text);
-        Assert.Contains("Measured that way, 26% of 1,880 guesses came true", text);
-        Assert.Contains("None of these has passed the full test yet.", text);
-        Assert.Contains("fell sharply behind the market 37 times", text);
-        Assert.Contains("The long-term Treasury bond fund (TLT) pulled ahead of the market within 15 days after 22 of them.", text);
-        Assert.Contains("pulled sharply ahead of the market 29 times", text);
-        Assert.Contains("fell behind the market within 10 days", text);
+        Assert.Contains("puts in $250 every other Friday, starting October 2", text);
+        Assert.Contains("So far each has put in $750.", text);
+        Assert.Contains("The Sandisk swing is in Sandisk now.", text);
+        Assert.Contains("goes in at today's close", text);
     }
 
     [Fact]
@@ -253,23 +207,20 @@ public class DigestWritingRulesTests
         Assert.Contains("1 pattern has passed the full test.", text);
         // Five listed, not six.
         Assert.DoesNotContain("A steady climber. 58% landed", text);
-        Assert.Equal("How the price guesses are doing", Everything().Sections[^2].Heading);
+        Assert.Equal("How the price guesses are doing", Everything().Sections[^1].Heading);
     }
 
     [Fact]
-    public void FollowOnReadout_ShowsProgressPerSpanAndOneLinePerLink()
+    public void Portfolios_LeaderFirst_ThenEveryoneInOrder()
     {
-        var sections = Everything().Sections;
-        Assert.Equal("When one fund moves, what others do next", sections[^1].Heading);
-        var text = string.Join(" ", sections[^1].Items.SelectMany(i => i.Sentences));
+        var section = Everything().Sections.Single(s => s.Heading == "Practice portfolios");
+        var text = string.Join(" ", section.Items.SelectMany(i => i.Sentences));
 
-        Assert.Contains("Since March 2022, we made 4,210 of these guesses.", text);
-        Assert.Contains("41% came true. With no pattern, we would expect 30%.", text);
-        Assert.Contains("Within 10 days: 42% came true, vs 31% with no pattern.", text);
-        Assert.Contains("after 29 of them. That is 71%, vs 40% in any 15 days.", text);
-        // XLF -> VEU shows once, at its strongest span; one open guess per follower.
-        Assert.DoesNotContain("after 25 of them", text);
-        Assert.Single(sections[^1].Items, i => i.Sentences[0].StartsWith("The bank and finance stock fund (XLF) had a big down day on"));
+        Assert.Contains("In the lead: S&P 500 + Eli Lilly + UnitedHealth, worth $781.20, up 4.2%.", text);
+        Assert.Contains("1st: S&P 500 + Eli Lilly + UnitedHealth, $781.20, up 4.2%.", text);
+        Assert.Contains("4th: Sandisk only, $590.40, down 21.3%.", text);
+        Assert.Contains("Its swing half moves back to cash above $1,500.", text);
+        Assert.True(text.IndexOf("2nd: S&P 500 only") < text.IndexOf("3rd: S&P 500 + Sandisk swing"));
     }
 
     [Fact]

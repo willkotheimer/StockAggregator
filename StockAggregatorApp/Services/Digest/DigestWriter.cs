@@ -1,4 +1,5 @@
 using System.Globalization;
+using StockAggregatorApp.Services.Portfolios;
 using StockAggregatorApp.Services.Projection;
 
 namespace StockAggregatorApp.Services.Digest;
@@ -44,7 +45,8 @@ public static class DigestWriter
         "Prices come from Yahoo Finance and can be a few minutes late.",
     ];
 
-    public static DigestContent Write(DigestSignals s, DataHealth health, ProjectionScorecard? scorecard = null)
+    public static DigestContent Write(
+        DigestSignals s, DataHealth health, ProjectionScorecard? scorecard = null, PortfolioLeaderboard? portfolios = null)
     {
         var sections = new List<DigestSection>();
 
@@ -144,18 +146,13 @@ public static class DigestWriter
         Add(sections, "Look closer", closer);
         Add(sections, "The past month", month);
         Add(sections, "Down from a recent high", before);
+        if (portfolios is not null)
+        {
+            Add(sections, "Practice portfolios", Portfolios(portfolios, s.TradingDate));
+        }
         if (scorecard is not null)
         {
             Add(sections, "How the price guesses are doing", Guesses(scorecard));
-            if (scorecard.FollowOn is { } followOn)
-            {
-                var items = FollowOn(followOn);
-                if (scorecard.FollowOnRelative is { } relative)
-                {
-                    items.AddRange(FollowOnRelative(relative));
-                }
-                Add(sections, "When one fund moves, what others do next", items);
-            }
         }
 
         return new DigestContent(
@@ -234,149 +231,60 @@ public static class DigestWriter
         return items;
     }
 
-    // Caps for the follow-on readout, so it stays a few lines.
-    public const int TopLinks = 3;
-    public const int TopOpen = 3;
-
     /// <summary>
-    /// The follow-on test's readout: what a big day is, how the guesses are doing per
-    /// span, the strongest links, and the guesses still waiting on their outcome.
+    /// The practice portfolios' leaderboard: how they work, money in so far, every portfolio
+    /// best first, where the Sandisk swing stands, and when the next money goes in.
     /// </summary>
-    private static List<DigestItem> FollowOn(FollowOnScorecard card)
+    private static List<DigestItem> Portfolios(PortfolioLeaderboard board, DateTime today)
     {
+        var amount = Dollars(board.ContributionAmount);
         var items = new List<DigestItem>
         {
             Item(
-                "When a fund has a big up or down day, we check what other funds do next.",
-                $"A big day is a move at least {Times(card.BigDayZ)} the fund's usual daily swing.",
-                "If a fund often had its own big day soon after, we guess it will again."),
+                $"Each practice portfolio puts in {amount} every other Friday, starting {board.Start.ToString("MMMM d", En)}.",
+                "Only real prices from that day on count."),
         };
 
-        if (card.FirstGuess is not { } first || card.All.HitRate is not { } all || card.All.BaselineHitRate is not { } allBase)
+        var leader = board.Ranked.FirstOrDefault(r => r.Contributions > 0);
+        if (leader is null)
         {
-            items.Add(Item("There is not enough history to make these guesses yet."));
+            items.Add(Item("No money has gone in yet."));
             return items;
         }
 
-        var progress = new List<string>
-        {
-            $"Since {first.ToString("MMMM yyyy", En)}, we made {card.All.Tests.ToString("N0", En)} of these guesses.",
-            $"{Whole(all)} came true. With no pattern, we would expect {Whole(allBase)}.",
-        };
-        if (card.Recent.HitRate is { } recent && card.Recent.BaselineHitRate is { } recentBase)
-        {
-            progress.Add($"In the last 20 trading days, {Whole(recent)} came true, vs {Whole(recentBase)} with no pattern.");
-        }
-        items.Add(new DigestItem(progress));
-
-        foreach (var w in card.Windows.Where(w => w.All.Tests > 0))
-        {
-            items.Add(Item(
-                $"Within {w.Days} days: {Whole(w.All.HitRate ?? 0)} came true, vs {Whole(w.All.BaselineHitRate ?? 0)} with no pattern.",
-                $"That is over {w.All.Tests.ToString("N0", En)} guesses."));
-        }
-
-        var passed = card.Windows.Where(w => w.Passed).Select(w => $"{w.Days}-day").ToList();
         items.Add(Item(
-            passed.Count == 0
-                ? "No span of days has passed the full test yet."
-                : $"The {string.Join(" and ", passed)} guesses have passed the full test.",
-            "Passing means beating no pattern by 10 points, in both the older and the newer years."));
+            $"So far each has put in {Dollars(leader.Contributed)}.",
+            $"In the lead: {leader.Name}, worth {Money(leader.Value)}, {Move(leader.GainPct ?? 0m)}."));
 
-        // One line per leader and follower: the span with the biggest lift.
-        var links = card.Links
-            .GroupBy(l => (l.Leader, l.LeaderUp, l.Follower, l.FollowerUp))
-            .Select(g => g.First())
-            .Take(TopLinks)
-            .ToList();
-        if (links.Count > 0)
+        var rank = 0;
+        foreach (var r in board.Ranked)
         {
-            items.Add(Item("The strongest links so far:"));
-            foreach (var l in links)
-            {
-                items.Add(Item(
-                    $"{Cap(DigestNames.Of(l.Leader))} had {l.Events} big {UpDown(l.LeaderUp)} days.",
-                    $"{Cap(DigestNames.Of(l.Follower))} had a big {UpDown(l.FollowerUp)} day within {l.Days} days after {l.Hits} of them.",
-                    $"That is {Whole(l.Rate)}, vs {Whole(l.BaseRate)} in any {l.Days} days."));
-            }
+            rank++;
+            items.Add(Item($"{Ordinal(rank)}: {r.Name}, {Money(r.Value)}, {Move(r.GainPct ?? 0m)}."));
         }
 
-        var open = card.Open
-            .GroupBy(o => o.Follower)
-            .Select(g => g.First())
-            .Take(TopOpen)
-            .ToList();
-        if (open.Count > 0)
+        var swing = PaperPortfolios.All.FirstOrDefault(p => p.Swing is not null);
+        if (swing?.Swing is { } rule && board.Ranked.FirstOrDefault(r => r.Number == swing.Number) is { SwingInStock: { } inStock })
         {
-            items.Add(Item("Guesses still open:"));
-            foreach (var o in open)
-            {
-                items.Add(Item(
-                    $"{Cap(DigestNames.Of(o.Leader))} had a big {UpDown(o.LeaderUp)} day on {o.Origin.ToString("MMM d", En)}.",
-                    $"Next we watch {DigestNames.Of(o.Follower)} for a big {UpDown(o.FollowerUp)} day.",
-                    $"After past days like that, it had one within {o.Days} days {Whole(o.Rate)} of the time.",
-                    $"In any {o.Days} days, that happens {Whole(o.BaseRate)} of the time.",
-                    o.AlreadyHappened
-                        ? "It has already happened this time."
-                        : o.DaysLeft == 1 ? "1 trading day is left." : $"{o.DaysLeft} trading days are left."));
-            }
+            items.Add(inStock
+                ? Item($"The Sandisk swing is in Sandisk now.", $"Its swing half moves back to cash above {Money(rule.Above)}.")
+                : Item($"The Sandisk swing is in cash now.", $"Its swing half moves into Sandisk below {Money(rule.Below)}."));
         }
+
+        items.Add(Item(board.NextContribution.Date == today.Date
+            ? $"The next {amount} goes in at today's close."
+            : $"The next {amount} goes in on {board.NextContribution.ToString("dddd, MMM d", En)}."));
 
         return items;
     }
 
-    /// <summary>Links shown from the relative measure.</summary>
-    public const int TopRelativeLinks = 2;
+    /// <summary>250 -> "$250"; 781.2 -> "$781.20". Money put in is usually round, and reads better without cents.</summary>
+    private static string Dollars(decimal amount) =>
+        amount == Math.Round(amount) ? amount.ToString("$#,##0", En) : Money(amount);
 
-    /// <summary>
-    /// The same test with each fund measured against the stock funds' average, so a day
-    /// when everything moves together doesn't count: progress, and the strongest links.
-    /// </summary>
-    private static List<DigestItem> FollowOnRelative(FollowOnScorecard card)
-    {
-        var items = new List<DigestItem>
-        {
-            Item(
-                "We also check each fund against the average of the stock funds.",
-                "That way, a day when everything moves together does not count."),
-        };
-
-        if (card.All.HitRate is not { } all || card.All.BaselineHitRate is not { } allBase)
-        {
-            items.Add(Item("Measured that way, there are no guesses yet."));
-            return items;
-        }
-
-        var sentences = new List<string>
-        {
-            $"Measured that way, {Whole(all)} of {card.All.Tests.ToString("N0", En)} guesses came true, vs {Whole(allBase)} with no pattern.",
-        };
-        var passed = card.Windows.Where(w => w.Passed).Select(w => $"{w.Days}-day").ToList();
-        sentences.Add(passed.Count == 0
-            ? "None of these has passed the full test yet."
-            : $"The {string.Join(" and ", passed)} guesses have passed the full test.");
-        items.Add(new DigestItem(sentences));
-
-        var links = card.Links
-            .GroupBy(l => (l.Leader, l.LeaderUp, l.Follower, l.FollowerUp))
-            .Select(g => g.First())
-            .Take(TopRelativeLinks)
-            .ToList();
-        foreach (var l in links)
-        {
-            items.Add(Item(
-                $"{Cap(DigestNames.Of(l.Leader))} {(l.LeaderUp ? "pulled sharply ahead of" : "fell sharply behind")} the market {l.Events} times.",
-                $"{Cap(DigestNames.Of(l.Follower))} {(l.FollowerUp ? "pulled ahead of" : "fell behind")} the market within {l.Days} days after {l.Hits} of them.",
-                $"That is {Whole(l.Rate)}, vs {Whole(l.BaseRate)} in any {l.Days} days."));
-        }
-
-        return items;
-    }
-
-    private static string UpDown(bool up) => up ? "up" : "down";
-
-    /// <summary>2 -> "twice"; 2.5 -> "2.5 times".</summary>
-    private static string Times(double z) => z == 2 ? "twice" : $"{z.ToString("0.#", En)} times";
+    /// <summary>1 -> "1st", 2 -> "2nd", 11 -> "11th".</summary>
+    private static string Ordinal(int n) =>
+        n + ((n % 100) is 11 or 12 or 13 ? "th" : (n % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" });
 
     /// <summary>0.4718 -> "47%".</summary>
     private static string Whole(double rate) => Math.Round(rate * 100, MidpointRounding.AwayFromZero).ToString("0", En) + "%";
